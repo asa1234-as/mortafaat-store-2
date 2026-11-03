@@ -1,4 +1,4 @@
-import { Product, Category, StoreSettings, Coupon } from '../types';
+import { Product, Category, StoreSettings, Coupon, BotKnowledgeRule } from '../types';
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
@@ -214,27 +214,25 @@ export const INITIAL_SETTINGS: StoreSettings = {
   storeNameEn: 'Mortafaat Store',
   phone: '01067906474',
   whatsapp: '201067906474',
-  vodafoneCashNumber: '01067906474',
-  instaPayUsername: '01067906474',
   shippingFee: 50,
   freeShippingThreshold: 1000,
-  announcementText: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + دفع آمن بالفيزا وباي موب وفودافون كاش! 🔥',
-  
-  // Paymob Settings
-  isPaymobCardEnabled: true,
-  paymobApiKey: '',
-  paymobCardIntegrationId: '',
-  paymobWalletIntegrationId: '',
-  paymobIframeId: '',
-  paymobHmacSecret: '',
-  paymobEnvironment: 'live',
+  announcementText: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + دفع عند الاستلام مع المعاينة قبل الدفع! 🔥',
+  adminPin: '1234',
 
-  // Bank Account Settings
-  bankName: 'البنك الأهلي المصري (NBE)',
-  bankAccountHolder: 'مرتفعات ستور - Mortafaat Store',
-  bankAccountNumber: '12345678901234',
-  bankIban: 'EG120002000100000012345678901',
-  bankSwiftCode: 'NBEGEGCX'
+  // Dynamic Gateway (Disabled by default until merchant gets approved by Fawry or Kashier)
+  isOnlinePaymentEnabled: false,
+  onlineGatewayName: 'الدفع الإلكتروني (كروت ومحافظ)',
+  onlineGatewayLogoUrl: '',
+  onlineGatewayMerchantId: '',
+  onlineGatewayApiKey: '',
+  onlineGatewaySecretKey: '',
+  onlineGatewayEnvironment: 'live',
+  onlineGatewayNotice: 'الدفع الإلكتروني عبر بوابة الدفع المعتمدة (سيتم تفعيلها فور صدور موافقة البنك).',
+
+  // Policies (Vital for payment gateway approval)
+  returnPolicyText: 'يحق للعميل استبدال أو استرجاع المنتج خلال 14 يوماً من تاريخ الاستلام بشرط أن يكون المنتج بحالته الأصلية وفي غلافه، مع إمكانية فحص ومعاينة المنتج قبل الاستلام والدفع للمندوب.',
+  shippingPolicyText: 'يتم شحن وتوصيل الطلبات خلال 24 إلى 48 ساعة لمحافظات القاهرة والجيزة والإسكندرية، وخلال 3 إلى 4 أيام لباقي محافظات الجمهورية مع شركة شحن متخصصة.',
+  privacyPolicyText: 'نلتزم في مرتفعات ستور بحماية خصوصية عملائنا ولا نشارك أي بيانات شخصية أو عناوين مع أي جهة خارجية إلا لغرض توصيل الشحنة فقط.'
 };
 
 export const INITIAL_COUPONS: Coupon[] = [
@@ -250,6 +248,44 @@ export const INITIAL_COUPONS: Coupon[] = [
     discountType: 'fixed',
     discountValue: 50,
     minOrderValue: 300,
+    isActive: true
+  }
+];
+
+export const INITIAL_BOT_RULES: BotKnowledgeRule[] = [
+  {
+    id: 'r-1',
+    title: 'قاعدة الشحن ومصاريف التوصيل',
+    keywords: ['شحن', 'توصيل', 'مصاريف', 'شحن مجاني', 'تكلفة'],
+    replyText: 'مصاريف الشحن الافتراضية 50 جنيه فقط لجميع المحافظات! ولو طلبك بمبلغ 1000 جنيه أو أكثر، ستحصل على شحن مجاني بالكامل 🎉',
+    isActive: true
+  },
+  {
+    id: 'r-2',
+    title: 'قاعدة طريقة الدفع والمعاينة',
+    keywords: ['دفع', 'طريقة الدفع', 'كاش', 'معاينة', 'استلام', 'فحص'],
+    replyText: 'الدفع متاح نقداً عند الاستلام (Cash on Delivery). والأهم أن لك الحق في فحص ومعاينة الأوردر بالكامل والتأكد من الجودة قبل دفع أي مليم للمندوب 👍',
+    isActive: true
+  },
+  {
+    id: 'r-3',
+    title: 'قاعدة الهدايا وعروض الشراء',
+    keywords: ['عرض', 'عروض', 'هدية', 'هدايا', 'اثنين', 'خصم'],
+    replyText: 'عند شرائك قطعتين من أي منتج ستحصل على هدية فورية قيمة مع الأوردر + كود خصم خاص على طلبك القادم! استخدم كود الخصم MORTAFAAT10 للحصول على 10% خصم إضافي.',
+    isActive: true
+  },
+  {
+    id: 'r-4',
+    title: 'قاعدة التواصل المباشر ورقم الهاتف',
+    keywords: ['تليفون', 'رقم', 'واتس', 'واتساب', 'موبايل', 'خدمة العملاء'],
+    replyText: 'يمكنك التواصل معنا مباشرة مع الإدارة أو الطلب هاتفياً وعبر واتساب على رقمنا المعتمد: 01067906474.',
+    isActive: true
+  },
+  {
+    id: 'r-5',
+    title: 'قاعدة الاستبدال والاسترجاع',
+    keywords: ['استرجاع', 'استبدال', 'ضمان', 'رجع'],
+    replyText: 'نضمن لك استبدال واسترجاع مجاني خلال 14 يوماً من استلام الطلب بكل سهولة إذا كان المنتج غير مطابق.',
     isActive: true
   }
 ];

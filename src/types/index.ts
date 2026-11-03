@@ -35,7 +35,7 @@ export interface CartItem {
   selectedColor?: string;
 }
 
-export type PaymentMethod = 'cod' | 'vodafone-cash' | 'instapay' | 'paymob-card' | 'bank-transfer';
+export type PaymentMethod = 'cod' | 'online-gateway';
 
 export interface Coupon {
   code: string;
@@ -61,8 +61,17 @@ export interface Order {
   paymentMethod: PaymentMethod;
   paymentStatus: 'paid' | 'unpaid' | 'pending_verification';
   transactionId?: string;
+  gatewayName?: string;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
+}
+
+export interface BotKnowledgeRule {
+  id: string;
+  title: string;
+  keywords: string[];
+  replyText: string;
+  isActive: boolean;
 }
 
 export interface StoreSettings {
@@ -70,32 +79,32 @@ export interface StoreSettings {
   storeNameEn: string;
   phone: string;
   whatsapp: string;
-  vodafoneCashNumber: string;
-  instaPayUsername: string;
   shippingFee: number;
   freeShippingThreshold: number;
   announcementText: string;
-  
-  // Paymob & Bank Integration Details
-  isPaymobCardEnabled: boolean;
-  paymobApiKey: string;
-  paymobCardIntegrationId: string;
-  paymobWalletIntegrationId: string;
-  paymobIframeId: string;
-  paymobHmacSecret: string;
-  paymobEnvironment: 'live' | 'test';
+  adminPin: string;
 
-  // Bank Account Details
-  bankName: string;
-  bankAccountHolder: string;
-  bankAccountNumber: string;
-  bankIban: string;
-  bankSwiftCode: string;
+  // Dynamic Payment Gateway Configuration (For Kashier / Fawry / Paymob etc.)
+  isOnlinePaymentEnabled: boolean;
+  onlineGatewayName: string;
+  onlineGatewayLogoUrl: string;
+  onlineGatewayMerchantId: string;
+  onlineGatewayApiKey: string;
+  onlineGatewaySecretKey: string;
+  onlineGatewayEnvironment: 'live' | 'test';
+  onlineGatewayNotice: string;
+
+  // Store Policies (Required by Fawry / Kashier for account approval)
+  returnPolicyText: string;
+  shippingPolicyText: string;
+  privacyPolicyText: string;
 }
 
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'support' | 'bot';
+  senderName?: string;
   text: string;
   time: string;
+  readByAdmin?: boolean;
 }

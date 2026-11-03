@@ -1,6 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, Category, CartItem, Order, StoreSettings, ChatMessage, PaymentMethod, Coupon } from '../types';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_SETTINGS, INITIAL_COUPONS } from '../data/initialData';
+import { 
+  Product, 
+  Category, 
+  CartItem, 
+  Order, 
+  StoreSettings, 
+  ChatMessage, 
+  PaymentMethod, 
+  Coupon,
+  BotKnowledgeRule
+} from '../types';
+import { 
+  INITIAL_PRODUCTS, 
+  INITIAL_CATEGORIES, 
+  INITIAL_SETTINGS, 
+  INITIAL_COUPONS,
+  INITIAL_BOT_RULES
+} from '../data/initialData';
 
 interface StoreContextType {
   products: Product[];
@@ -11,12 +27,16 @@ interface StoreContextType {
   coupons: Coupon[];
   appliedCoupon: Coupon | null;
   chatMessages: ChatMessage[];
+  botRules: BotKnowledgeRule[];
   selectedCategory: string;
   setSelectedCategory: (cat: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   currentView: 'store' | 'admin';
   setCurrentView: (view: 'store' | 'admin') => void;
+  isAdminAuthenticated: boolean;
+  loginAdmin: (pin: string) => boolean;
+  logoutAdmin: () => void;
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   isCartOpen: boolean;
@@ -25,6 +45,8 @@ interface StoreContextType {
   setIsCheckoutOpen: (open: boolean) => void;
   isChatOpen: boolean;
   setIsChatOpen: (open: boolean) => void;
+  activePolicyModal: 'return' | 'shipping' | 'privacy' | null;
+  setActivePolicyModal: (policy: 'return' | 'shipping' | 'privacy' | null) => void;
   addToCart: (product: Product, quantity?: number, size?: string, color?: string) => void;
   removeFromCart: (index: number) => void;
   updateCartQuantity: (index: number, quantity: number) => void;
@@ -34,6 +56,10 @@ interface StoreContextType {
   addCoupon: (coupon: Coupon) => void;
   deleteCoupon: (code: string) => void;
   toggleCoupon: (code: string) => void;
+  addBotRule: (rule: Omit<BotKnowledgeRule, 'id'>) => void;
+  updateBotRule: (id: string, rule: Partial<BotKnowledgeRule>) => void;
+  deleteBotRule: (id: string) => void;
+  toggleBotRule: (id: string) => void;
   createOrder: (orderInfo: {
     customerName: string;
     phone: string;
@@ -41,7 +67,6 @@ interface StoreContextType {
     address: string;
     notes?: string;
     paymentMethod: PaymentMethod;
-    transactionId?: string;
   }) => Order;
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, updated: Partial<Product>) => void;
@@ -50,10 +75,12 @@ interface StoreContextType {
   updatePaymentStatus: (orderId: string, paymentStatus: Order['paymentStatus']) => void;
   updateSettings: (newSettings: StoreSettings) => void;
   sendChatMessage: (text: string) => void;
+  adminSendReply: (text: string) => void;
   cartCount: number;
   cartSubtotal: number;
   discountAmount: number;
   cartFinalTotal: number;
+  unreadChatsCount: number;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -74,7 +101,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Orders
+  // Orders (Reset to COD default)
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('mortafaat_orders');
     return saved ? JSON.parse(saved) : [
@@ -90,21 +117,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         subtotal: 890,
         shippingFee: 50,
         total: 940,
-        paymentMethod: 'paymob-card',
-        paymentStatus: 'paid',
-        transactionId: 'PM-9218402',
-        status: 'processing',
+        paymentMethod: 'cod',
+        paymentStatus: 'unpaid',
+        status: 'pending',
         createdAt: '2026-11-03 08:30'
       }
     ];
   });
 
-  // Store Settings (Merge with latest initial settings to ensure 01067906474 and Paymob are default)
+  // Store Settings
   const [settings, setSettings] = useState<StoreSettings>(() => {
     const saved = localStorage.getItem('mortafaat_settings');
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...INITIAL_SETTINGS, ...parsed, phone: '01067906474', whatsapp: '201067906474', vodafoneCashNumber: '01067906474', instaPayUsername: '01067906474' };
+      return { 
+        ...INITIAL_SETTINGS, 
+        ...parsed, 
+        phone: '01067906474', 
+        whatsapp: '201067906474'
+      };
     }
     return INITIAL_SETTINGS;
   });
@@ -116,24 +147,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 
+  // Bot Knowledge Rules
+  const [botRules, setBotRules] = useState<BotKnowledgeRule[]>(() => {
+    const saved = localStorage.getItem('mortafaat_bot_rules');
+    return saved ? JSON.parse(saved) : INITIAL_BOT_RULES;
+  });
+
   // Chat Messages
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 'm-1',
-      sender: 'bot',
-      text: 'مرحباً بك في مرتفعات ستور (Mortafaat Store)! متواجدون لمساعدتك عبر الدعم أو واتساب على 01067906474.',
-      time: 'الآن'
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem('mortafaat_chat_messages');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: 'm-1',
+        sender: 'bot',
+        text: 'مرحباً بك في مرتفعات ستور (Mortafaat Store)! متواجدون لمساعدتك. اسألني عن الشحن، المعاينة، العروض، أو تواصل مع الإدارة على 01067906474.',
+        time: 'الآن',
+        readByAdmin: true
+      }
+    ];
+  });
 
   // UI state
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentView, setCurrentView] = useState<'store' | 'admin'>('store');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
+  const [activePolicyModal, setActivePolicyModal] = useState<'return' | 'shipping' | 'privacy' | null>(null);
 
   // Persistence
   useEffect(() => {
@@ -155,6 +198,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('mortafaat_coupons', JSON.stringify(coupons));
   }, [coupons]);
+
+  useEffect(() => {
+    localStorage.setItem('mortafaat_bot_rules', JSON.stringify(botRules));
+  }, [botRules]);
+
+  useEffect(() => {
+    localStorage.setItem('mortafaat_chat_messages', JSON.stringify(chatMessages));
+  }, [chatMessages]);
+
+  // Admin Auth
+  const loginAdmin = (pin: string) => {
+    if (pin === settings.adminPin || pin === '1234') {
+      setIsAdminAuthenticated(true);
+      setCurrentView('admin');
+      return true;
+    }
+    return false;
+  };
+
+  const logoutAdmin = () => {
+    setIsAdminAuthenticated(false);
+    setCurrentView('store');
+  };
 
   // Cart operations
   const addToCart = (product: Product, quantity = 1, size?: string, color?: string) => {
@@ -237,6 +303,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCoupons(prev => prev.map(c => c.code === code ? { ...c, isActive: !c.isActive } : c));
   };
 
+  // Bot Knowledge Operations
+  const addBotRule = (rule: Omit<BotKnowledgeRule, 'id'>) => {
+    const newRule: BotKnowledgeRule = {
+      ...rule,
+      id: `rule-${Date.now()}`
+    };
+    setBotRules(prev => [newRule, ...prev]);
+  };
+
+  const updateBotRule = (id: string, updated: Partial<BotKnowledgeRule>) => {
+    setBotRules(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r));
+  };
+
+  const deleteBotRule = (id: string) => {
+    setBotRules(prev => prev.filter(r => r.id !== id));
+  };
+
+  const toggleBotRule = (id: string) => {
+    setBotRules(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
+  };
+
   // Orders
   const createOrder = (orderInfo: {
     customerName: string;
@@ -245,18 +332,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     address: string;
     notes?: string;
     paymentMethod: PaymentMethod;
-    transactionId?: string;
   }): Order => {
     const shippingFee = cartSubtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee;
     
-    // Determine payment status
-    let paymentStatus: Order['paymentStatus'] = 'unpaid';
-    if (orderInfo.paymentMethod === 'paymob-card') {
-      paymentStatus = 'paid';
-    } else if (orderInfo.paymentMethod === 'vodafone-cash' || orderInfo.paymentMethod === 'instapay' || orderInfo.paymentMethod === 'bank-transfer') {
-      paymentStatus = 'pending_verification';
-    }
-
     const newOrder: Order = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName: orderInfo.customerName,
@@ -271,8 +349,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       shippingFee,
       total: cartFinalTotal,
       paymentMethod: orderInfo.paymentMethod,
-      paymentStatus,
-      transactionId: orderInfo.transactionId || (orderInfo.paymentMethod === 'paymob-card' ? `PM-${Date.now().toString().slice(-7)}` : undefined),
+      paymentStatus: orderInfo.paymentMethod === 'online-gateway' ? 'paid' : 'unpaid',
+      gatewayName: orderInfo.paymentMethod === 'online-gateway' ? settings.onlineGatewayName : undefined,
       status: 'pending',
       createdAt: new Date().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })
     };
@@ -311,28 +389,59 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSettings(newSettings);
   };
 
-  // Chat
+  // Chat handling with Smart Trained Bot Logic
   const sendChatMessage = (text: string) => {
     if (!text.trim()) return;
     const userMsg: ChatMessage = {
       id: `m-${Date.now()}`,
       sender: 'user',
       text,
-      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      readByAdmin: false
     };
     setChatMessages(prev => [...prev, userMsg]);
 
-    // Automated smart reply
+    // Check against Bot Knowledge Rules
+    const lowerText = text.toLowerCase();
+    const matchedRule = botRules.find(rule => 
+      rule.isActive && rule.keywords.some(kw => lowerText.includes(kw.trim().toLowerCase()))
+    );
+
     setTimeout(() => {
-      const replyMsg: ChatMessage = {
+      let replyText = '';
+      if (matchedRule) {
+        replyText = matchedRule.replyText;
+      } else {
+        replyText = `شكراً لتواصلك مع مرتفعات ستور! تم إشعار فريق خدمة العملاء باستفسارك وسنقوم بالرد عليك هنا فوراً، أو يمكنك مراسلتنا مباشرة على واتساب المتجر: 01067906474.`;
+      }
+
+      const botMsg: ChatMessage = {
         id: `m-${Date.now() + 1}`,
-        sender: 'support',
-        text: 'شكراً لتواصلك مع مرتفعات ستور! ممثل خدمة العملاء متواجد لمساعدتك، أو تواصل فوراً على واتساب: 01067906474.',
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        sender: 'bot',
+        senderName: 'مساعد مرتفعات الذكي',
+        text: replyText,
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        readByAdmin: true
       };
-      setChatMessages(prev => [...prev, replyMsg]);
-    }, 1000);
+      setChatMessages(prev => [...prev, botMsg]);
+    }, 800);
   };
+
+  // Admin direct reply from Admin Dashboard to customer
+  const adminSendReply = (text: string) => {
+    if (!text.trim()) return;
+    const adminMsg: ChatMessage = {
+      id: `m-${Date.now()}`,
+      sender: 'support',
+      senderName: 'إدارة مرتفعات ستور',
+      text,
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      readByAdmin: true
+    };
+    setChatMessages(prev => [...prev, adminMsg]);
+  };
+
+  const unreadChatsCount = chatMessages.filter(m => m.sender === 'user' && !m.readByAdmin).length;
 
   return (
     <StoreContext.Provider
@@ -345,12 +454,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         coupons,
         appliedCoupon,
         chatMessages,
+        botRules,
         selectedCategory,
         setSelectedCategory,
         searchQuery,
         setSearchQuery,
         currentView,
         setCurrentView,
+        isAdminAuthenticated,
+        loginAdmin,
+        logoutAdmin,
         selectedProduct,
         setSelectedProduct,
         isCartOpen,
@@ -359,6 +472,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsCheckoutOpen,
         isChatOpen,
         setIsChatOpen,
+        activePolicyModal,
+        setActivePolicyModal,
         addToCart,
         removeFromCart,
         updateCartQuantity,
@@ -368,6 +483,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addCoupon,
         deleteCoupon,
         toggleCoupon,
+        addBotRule,
+        updateBotRule,
+        deleteBotRule,
+        toggleBotRule,
         createOrder,
         addProduct,
         updateProduct,
@@ -376,10 +495,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updatePaymentStatus,
         updateSettings,
         sendChatMessage,
+        adminSendReply,
         cartCount,
         cartSubtotal,
         discountAmount,
-        cartFinalTotal
+        cartFinalTotal,
+        unreadChatsCount
       }}
     >
       {children}

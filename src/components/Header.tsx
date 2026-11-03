@@ -3,17 +3,18 @@ import { useStore } from '../context/StoreContext';
 import { 
   Search, 
   ShoppingCart, 
-  ShieldCheck, 
   Phone, 
   Menu, 
   X, 
   Flame, 
-  Sparkles,
   Smartphone,
   Shirt,
+  Sparkles,
   Home,
   HeartPulse,
-  Grid
+  Grid,
+  LogOut,
+  Store
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -23,6 +24,7 @@ export const Header: React.FC = () => {
     setIsCartOpen, 
     currentView, 
     setCurrentView,
+    logoutAdmin,
     selectedCategory,
     setSelectedCategory,
     searchQuery,
@@ -40,6 +42,41 @@ export const Header: React.FC = () => {
     { id: 'personal-care', name: 'عناية شخصية', icon: HeartPulse },
   ];
 
+  // If currently in Admin Mode, show Admin Top Navbar
+  if (currentView === 'admin') {
+    return (
+      <header className="sticky top-0 z-40 bg-brand-black text-white shadow-xl border-b border-brand-gold/40">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="" className="w-9 h-9 rounded-xl border border-brand-gold bg-black p-0.5" />
+            <div>
+              <span className="font-black text-sm text-white">لوحة تحكم مرتفعات ستور (بوابة الإدارة)</span>
+              <span className="text-[10px] text-brand-gold block font-mono">Mortafaat Admin Suite</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentView('store')}
+              className="px-3.5 py-1.5 rounded-xl bg-brand-charcoal hover:bg-brand-darkGray text-xs font-bold text-gray-200 border border-brand-border flex items-center gap-1.5 transition-colors"
+            >
+              <Store className="w-3.5 h-3.5 text-brand-gold" />
+              <span>معاينة المتجر</span>
+            </button>
+            <button
+              onClick={logoutAdmin}
+              className="px-3.5 py-1.5 rounded-xl bg-red-600/80 hover:bg-red-700 text-xs font-bold text-white flex items-center gap-1.5 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>تسجيل خروج</span>
+            </button>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // Customer Storefront Header
   return (
     <header className="sticky top-0 z-40 bg-brand-black text-white shadow-xl border-b border-brand-gold/30">
       {/* Top Announcement Bar */}
@@ -53,7 +90,7 @@ export const Header: React.FC = () => {
         </div>
         <div className="hidden md:flex items-center gap-3">
           <span className="bg-brand-black/20 px-2 py-0.5 rounded text-xs">شحن سريع</span>
-          <span className="bg-brand-black/20 px-2 py-0.5 rounded text-xs">دفع عند الاستلام</span>
+          <span className="bg-brand-black/20 px-2 py-0.5 rounded text-xs">دفع عند الاستلام مع المعاينة</span>
         </div>
       </div>
 
@@ -63,7 +100,7 @@ export const Header: React.FC = () => {
           
           {/* Brand Logo & Name */}
           <div 
-            onClick={() => { setCurrentView('store'); setSelectedCategory('all'); }}
+            onClick={() => { setSelectedCategory('all'); }}
             className="flex items-center gap-3 cursor-pointer group flex-shrink-0"
           >
             <div className="relative w-11 h-11 md:w-13 md:h-13 rounded-xl overflow-hidden border-2 border-brand-gold shadow-lg shadow-brand-gold/20 bg-brand-black flex items-center justify-center p-0.5">
@@ -113,21 +150,17 @@ export const Header: React.FC = () => {
           {/* Action Buttons */}
           <div className="flex items-center gap-2 md:gap-3">
             
-            {/* Admin App Switcher Button */}
-            <button
-              onClick={() => setCurrentView(currentView === 'store' ? 'admin' : 'store')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                currentView === 'admin'
-                  ? 'bg-brand-gold text-brand-black border-brand-gold shadow-lg shadow-brand-gold/30'
-                  : 'bg-brand-charcoal hover:bg-brand-darkGray text-gray-200 border-brand-border hover:border-brand-gold/50'
-              }`}
-              title="لوحة تحكم المتجر (تطبيق الإدارة)"
+            {/* WhatsApp Fast Order Direct Button */}
+            <a
+              href={`https://wa.me/${settings.whatsapp}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-md"
+              title="تواصل مباشر عبر واتساب"
             >
-              <ShieldCheck className="w-4 h-4 text-brand-gold" />
-              <span className="hidden sm:inline">
-                {currentView === 'admin' ? 'الرجوع للمتجر' : 'تطبيق الإدارة'}
-              </span>
-            </button>
+              <Phone className="w-3.5 h-3.5" />
+              <span>واتساب المتجر</span>
+            </a>
 
             {/* Shopping Cart Button */}
             <button
@@ -168,7 +201,7 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Categories Navigation Bar (Inspired by More Shopping) */}
+      {/* Categories Navigation Bar */}
       <div className="bg-brand-charcoal border-t border-brand-border/60 hidden md:block">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between overflow-x-auto py-2 scrollbar-none">
@@ -181,7 +214,6 @@ export const Header: React.FC = () => {
                     key={cat.id}
                     onClick={() => {
                       setSelectedCategory(cat.id);
-                      if (currentView !== 'store') setCurrentView('store');
                     }}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-semibold transition-all whitespace-nowrap ${
                       isActive
@@ -220,7 +252,6 @@ export const Header: React.FC = () => {
                   onClick={() => {
                     setSelectedCategory(cat.id);
                     setMobileMenuOpen(false);
-                    if (currentView !== 'store') setCurrentView('store');
                   }}
                   className={`flex items-center gap-2 p-2.5 rounded-lg text-xs font-semibold ${
                     isActive

@@ -8,6 +8,7 @@ import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
+import { PolicyModal } from './components/PolicyModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 
@@ -37,6 +38,7 @@ export const AppContent: React.FC = () => {
       <CartDrawer />
       <CheckoutModal />
       <LiveChatWidget />
+      <PolicyModal />
     </div>
   );
 };

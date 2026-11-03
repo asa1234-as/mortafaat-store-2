@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { MessageSquare, X, Send, MessageCircle, Bot, User, Clock } from 'lucide-react';
+import { MessageSquare, X, Send, MessageCircle, Bot, User, ShieldCheck } from 'lucide-react';
 
 export const LiveChatWidget: React.FC = () => {
-  const { isChatOpen, setIsChatOpen, chatMessages, sendChatMessage, settings } = useStore();
+  const { isChatOpen, setIsChatOpen, chatMessages, sendChatMessage, settings, botRules } = useStore();
   const [inputText, setInputText] = useState('');
 
   const quickQuestions = [
-    'ما هي مدة التوصيل والمحافظات المتاحة؟',
+    'ما هي مدة وتكلفة الشحن؟',
     'هل متاح فحص ومعاينة المنتج قبل الدفع؟',
-    'ما هي طرق الدفع المتاحة في المتجر؟'
+    'ما هي العروض والخصومات المتاحة اليوم؟'
   ];
 
   const handleSend = (e: React.FormEvent) => {
@@ -53,8 +53,8 @@ export const LiveChatWidget: React.FC = () => {
                 <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-brand-black" />
               </div>
               <div>
-                <h4 className="font-bold text-xs leading-none">فريق دعم مرتفعات ستور</h4>
-                <span className="text-[10px] text-emerald-400 font-semibold">متصل الآن لمساعدتك</span>
+                <h4 className="font-bold text-xs leading-none">مساعد مرتفعات ستور الذكي</h4>
+                <span className="text-[10px] text-emerald-400 font-semibold">متصل ومربوط بالإدارة للرد الفوري</span>
               </div>
             </div>
 
@@ -77,9 +77,9 @@ export const LiveChatWidget: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick WhatsApp Banner */}
+          {/* Quick WhatsApp Link Banner */}
           <div className="bg-emerald-50 px-3 py-1.5 border-b border-emerald-200 flex items-center justify-between text-[11px]">
-            <span className="text-emerald-900 font-medium">للرد السريع والفوري في ثوانٍ:</span>
+            <span className="text-emerald-900 font-medium">واتساب مباشر مع الإدارة:</span>
             <a
               href={`https://wa.me/${settings.whatsapp}`}
               target="_blank"
@@ -87,7 +87,7 @@ export const LiveChatWidget: React.FC = () => {
               className="text-emerald-700 font-bold hover:underline flex items-center gap-1"
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              <span>واتساب مباشر</span>
+              <span>{settings.phone}</span>
             </a>
           </div>
 
@@ -95,23 +95,35 @@ export const LiveChatWidget: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-zinc-50">
             {chatMessages.map((msg) => {
               const isUser = msg.sender === 'user';
+              const isSupport = msg.sender === 'support';
               return (
                 <div
                   key={msg.id}
                   className={`flex gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                 >
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs ${
-                    isUser ? 'bg-brand-gold text-black font-bold' : 'bg-brand-black text-brand-gold'
+                    isUser ? 'bg-brand-gold text-black font-bold' : 
+                    isSupport ? 'bg-emerald-600 text-white font-bold' : 
+                    'bg-brand-black text-brand-gold'
                   }`}>
-                    {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
+                    {isUser ? <User className="w-3.5 h-3.5" /> : 
+                     isSupport ? <ShieldCheck className="w-3.5 h-3.5" /> : 
+                     <Bot className="w-3.5 h-3.5" />}
                   </div>
 
-                  <div className={`max-w-[75%] rounded-2xl p-2.5 text-xs shadow-xs ${
+                  <div className={`max-w-[78%] rounded-2xl p-2.5 text-xs shadow-xs ${
                     isUser
                       ? 'bg-brand-black text-white rounded-tl-none'
+                      : isSupport
+                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-tr-none font-medium'
                       : 'bg-white text-gray-800 border border-gray-200 rounded-tr-none'
                   }`}>
-                    <p className="leading-relaxed">{msg.text}</p>
+                    {msg.senderName && !isUser && (
+                      <span className={`text-[10px] font-bold block mb-0.5 ${isSupport ? 'text-emerald-700' : 'text-brand-goldDark'}`}>
+                        {msg.senderName}
+                      </span>
+                    )}
+                    <p className="leading-relaxed whitespace-pre-line">{msg.text}</p>
                     <span className={`text-[9px] block text-left mt-1 ${isUser ? 'text-gray-400' : 'text-gray-400'}`}>
                       {msg.time}
                     </span>
@@ -122,7 +134,7 @@ export const LiveChatWidget: React.FC = () => {
 
             {/* Quick Suggestions */}
             <div className="pt-2">
-              <span className="text-[10px] font-bold text-gray-500 block mb-1">أسئلة شائعة:</span>
+              <span className="text-[10px] font-bold text-gray-500 block mb-1">أسئلة يمكنك الضغط عليها:</span>
               <div className="flex flex-col gap-1">
                 {quickQuestions.map((q, idx) => (
                   <button
@@ -141,7 +153,7 @@ export const LiveChatWidget: React.FC = () => {
           <form onSubmit={handleSend} className="p-2.5 bg-white border-t border-gray-200 flex gap-2">
             <input
               type="text"
-              placeholder="اكتب استفسارك هنا..."
+              placeholder="اكتب رسالتك وسيرد عليك البوت أو الإدارة فوراً..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               className="flex-1 px-3 py-2 text-xs rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"

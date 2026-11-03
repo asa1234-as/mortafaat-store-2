@@ -1,9 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Phone, MessageCircle, MapPin, Shield, Truck, Award } from 'lucide-react';
+import { Phone, MessageCircle, MapPin, Shield, Truck, Award, Lock } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { settings, setSelectedCategory, setCurrentView } = useStore();
+  const { settings, setSelectedCategory, setActivePolicyModal, loginAdmin } = useStore();
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginAdmin(pinInput)) {
+      setIsPinModalOpen(false);
+      setPinInput('');
+      setPinError(false);
+    } else {
+      setPinError(true);
+    }
+  };
 
   return (
     <footer className="bg-brand-black text-white border-t border-brand-gold/30 pt-12 pb-8">
@@ -25,7 +39,7 @@ export const Footer: React.FC = () => {
             </div>
 
             <p className="text-xs text-gray-400 leading-relaxed">
-              متجرك الشامل والمتخصص في تقديم أرقى الأزياء، أحدث الإلكترونيات الذكية، العطور الفاخرة، ومستلزمات المنزل والعناية الشخصية بأعلى جودة وأفضل سعر في مصر.
+              متجرك الشامل والمتخصص في أرقى الأزياء، الإلكترونيات، العطور الملكية، ومستلزمات المنزل والعناية الشخصية في مصر مع خدمة الدفع عند الاستلام والمعاينة قبل الدفع.
             </p>
 
             <div className="flex items-center gap-3 text-xs text-gray-300">
@@ -47,7 +61,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2 text-xs text-gray-400">
               <li>
                 <button 
-                  onClick={() => { setSelectedCategory('electronics'); setCurrentView('store'); }} 
+                  onClick={() => setSelectedCategory('electronics')} 
                   className="hover:text-white transition-colors"
                 >
                   الإلكترونيات والذكاء
@@ -55,7 +69,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button 
-                  onClick={() => { setSelectedCategory('fashion'); setCurrentView('store'); }} 
+                  onClick={() => setSelectedCategory('fashion')} 
                   className="hover:text-white transition-colors"
                 >
                   الملابس والأزياء الشتوية والصيفية
@@ -63,7 +77,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button 
-                  onClick={() => { setSelectedCategory('perfumes'); setCurrentView('store'); }} 
+                  onClick={() => setSelectedCategory('perfumes')} 
                   className="hover:text-white transition-colors"
                 >
                   عطور شموخ المرتفعات
@@ -71,7 +85,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button 
-                  onClick={() => { setSelectedCategory('home'); setCurrentView('store'); }} 
+                  onClick={() => setSelectedCategory('home')} 
                   className="hover:text-white transition-colors"
                 >
                   الأجهزة والأدوات المنزلية
@@ -79,7 +93,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button 
-                  onClick={() => { setSelectedCategory('personal-care'); setCurrentView('store'); }} 
+                  onClick={() => setSelectedCategory('personal-care')} 
                   className="hover:text-white transition-colors"
                 >
                   العناية والأدوات الشخصية
@@ -88,30 +102,45 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Payment & Guarantees */}
+          {/* Store Policies (For Fawry / Kashier Compliance) */}
           <div className="space-y-3">
-            <h4 className="text-sm font-black text-brand-gold tracking-wide">طرق الدفع والضمان</h4>
-            <div className="space-y-2 text-xs text-gray-400">
-              <p>✓ الدفع عند الاستلام بعد المعاينة والفحص</p>
-              <p>✓ التحويل عبر محافظ فودافون كاش والمحافظ البنكية</p>
-              <p>✓ الدفع الفوري عبر تطبيق إنستاباي (InstaPay)</p>
-              <p>✓ سياسة استبدال واسترجاع مرنة خلال 14 يوماً</p>
-            </div>
+            <h4 className="text-sm font-black text-brand-gold tracking-wide">سياسات المتجر والضمان</h4>
+            <ul className="space-y-2 text-xs text-gray-400">
+              <li>
+                <button
+                  onClick={() => setActivePolicyModal('return')}
+                  className="hover:text-brand-gold transition-colors flex items-center gap-1.5"
+                >
+                  <span>✓ سياسة الاستبدال والاسترجاع (14 يوماً)</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setActivePolicyModal('shipping')}
+                  className="hover:text-brand-gold transition-colors flex items-center gap-1.5"
+                >
+                  <span>✓ سياسة الشحن والتوصيل لكافة المحافظات</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => setActivePolicyModal('privacy')}
+                  className="hover:text-brand-gold transition-colors flex items-center gap-1.5"
+                >
+                  <span>✓ سياسة الخصوصية والشروط والأحكام</span>
+                </button>
+              </li>
+            </ul>
 
-            <div className="pt-2 flex flex-wrap gap-2">
-              <span className="bg-brand-charcoal text-[11px] font-bold px-2.5 py-1 rounded-lg border border-brand-border text-gray-300">
-                Cash on Delivery
-              </span>
-              <span className="bg-brand-charcoal text-[11px] font-bold px-2.5 py-1 rounded-lg border border-brand-border text-red-400">
-                Vodafone Cash
-              </span>
-              <span className="bg-brand-charcoal text-[11px] font-bold px-2.5 py-1 rounded-lg border border-brand-border text-purple-400">
-                InstaPay
+            <div className="pt-2">
+              <span className="text-[11px] font-bold text-gray-300 block mb-1">طريقة الدفع المعتمدة حالياً:</span>
+              <span className="inline-block bg-brand-charcoal text-xs font-bold px-3 py-1 rounded-lg border border-brand-border text-emerald-400">
+                💵 الدفع عند الاستلام مع المعاينة المجانية
               </span>
             </div>
           </div>
 
-          {/* Contact Col */}
+          {/* Contact & Admin Portal Col */}
           <div className="space-y-3">
             <h4 className="text-sm font-black text-brand-gold tracking-wide">تواصل معنا</h4>
             
@@ -130,12 +159,14 @@ export const Footer: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2">
+            {/* Discreet Admin Login Trigger */}
+            <div className="pt-4 border-t border-brand-border/40">
               <button
-                onClick={() => setCurrentView('admin')}
-                className="text-[11px] text-gray-400 hover:text-brand-gold font-semibold transition-colors underline"
+                onClick={() => setIsPinModalOpen(true)}
+                className="text-[11px] text-gray-500 hover:text-brand-gold font-semibold transition-colors flex items-center gap-1.5"
               >
-                دخول لوحة تحكم الإدارة (Admin App)
+                <Lock className="w-3.5 h-3.5" />
+                <span>بوابة إدارة المتجر (Admin Suite)</span>
               </button>
             </div>
           </div>
@@ -145,10 +176,52 @@ export const Footer: React.FC = () => {
         <div className="pt-6 border-t border-brand-charcoal flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-3">
           <p>© 2026 جميع الحقوق محفوظة لـ <strong>مرتفعات ستور (Mortafaat Store)</strong></p>
           <p className="flex items-center gap-1">
-            صُمم بأعلى معايير السرعة والأمان
+            مبني بأحدث معايير الأمان والتوافق مع بوابات الدفع الإلكتروني
           </p>
         </div>
       </div>
+
+      {/* Admin PIN Authentication Modal */}
+      {isPinModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-brand-charcoal text-white rounded-3xl max-w-sm w-full p-6 border border-brand-gold/40 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-700 pb-3">
+              <div className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-brand-gold" />
+                <h3 className="font-black text-sm text-white">تسجيل دخول الإدارة</h3>
+              </div>
+              <button onClick={() => setIsPinModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+
+            <p className="text-xs text-gray-300">
+              أدخل رمز المرور السري للدخول إلى برنامج التحكم وإدارة المتجر (الرمز الافتراضي: 1234):
+            </p>
+
+            <form onSubmit={handleAdminLogin} className="space-y-3">
+              <input
+                type="password"
+                maxLength={6}
+                autoFocus
+                placeholder="رمز PIN السري..."
+                value={pinInput}
+                onChange={(e) => { setPinInput(e.target.value); setPinError(false); }}
+                className="w-full px-4 py-2.5 rounded-xl bg-black border border-gray-600 text-white font-mono text-center text-lg tracking-widest focus:border-brand-gold focus:outline-none"
+              />
+
+              {pinError && (
+                <p className="text-red-400 text-xs font-bold text-center">رمز المرور غير صحيح!</p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs shadow-md hover:brightness-105 transition-all"
+              >
+                دخول إلى لوحة التحكم
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </footer>
   );
 };
