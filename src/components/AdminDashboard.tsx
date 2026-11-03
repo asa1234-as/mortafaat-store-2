@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Product, Order, Coupon, BotKnowledgeRule, StoreSettings } from '../types';
+import { Product, Order, Coupon, BotKnowledgeRule, HeroSlide, Category, StoreSettings } from '../types';
 import { 
   Package, 
   ShoppingCart, 
@@ -13,21 +13,23 @@ import {
   TrendingUp, 
   Upload, 
   Eye, 
-  Smartphone,
-  CheckCircle,
-  Clock,
-  FileSpreadsheet,
-  CreditCard,
-  Tag,
-  Lock,
-  Search,
-  MessageSquare,
-  Bot,
-  Send,
-  Sparkles,
-  ShieldCheck,
-  FileText,
-  Sliders
+  Clock, 
+  FileSpreadsheet, 
+  CreditCard, 
+  Tag, 
+  Search, 
+  MessageSquare, 
+  Bot, 
+  Send, 
+  Sparkles, 
+  ShieldCheck, 
+  FileText, 
+  Sliders, 
+  Layers, 
+  LayoutTemplate,
+  CheckCircle2,
+  Image as ImageIcon,
+  Timer
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -38,11 +40,12 @@ export const AdminDashboard: React.FC = () => {
     coupons,
     botRules,
     chatMessages,
+    slides,
+    categories,
     addProduct, 
     updateProduct, 
     deleteProduct, 
     updateOrderStatus, 
-    updatePaymentStatus,
     updateSettings,
     addCoupon,
     deleteCoupon,
@@ -50,11 +53,18 @@ export const AdminDashboard: React.FC = () => {
     addBotRule,
     deleteBotRule,
     toggleBotRule,
+    addSlide,
+    deleteSlide,
+    addCategory,
+    deleteCategory,
     adminSendReply,
-    setCurrentView
+    setCurrentView,
+    saveFeedbackToast,
+    triggerSaveFeedback
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'live-chat' | 'bot-training' | 'gateway' | 'coupons' | 'policies' | 'marketplaces' | 'settings'>('products');
+  // START ON OVERVIEW HOME (As requested: "مش عاوز نلاقيه موجهني مباشر لقسم المنتجات")
+  const [activeTab, setActiveTab] = useState<'overview' | 'slides' | 'categories' | 'products' | 'orders' | 'live-chat' | 'bot-training' | 'gateway' | 'coupons' | 'settings'>('overview');
 
   // Product Add/Edit Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -63,13 +73,28 @@ export const AdminDashboard: React.FC = () => {
   // Product Form State
   const [prodName, setProdName] = useState('');
   const [prodNameEn, setProdNameEn] = useState('');
-  const [prodCategory, setProdCategory] = useState<Product['category']>('electronics');
+  const [prodCategory, setProdCategory] = useState<string>('electronics');
   const [prodPrice, setProdPrice] = useState<number>(0);
   const [prodOriginalPrice, setProdOriginalPrice] = useState<number | undefined>(undefined);
   const [prodStock, setProdStock] = useState<number>(10);
   const [prodDescription, setProdDescription] = useState('');
-  const [prodImageUrl, setProdImageUrl] = useState('');
+  const [prodImages, setProdImages] = useState<string[]>([]);
+  const [prodNewImageInput, setProdNewImageInput] = useState('');
+  const [prodVideoUrl, setProdVideoUrl] = useState('');
   const [prodFeatures, setProdFeatures] = useState('');
+
+  // Slide Form State
+  const [newSlideTitle, setNewSlideTitle] = useState('');
+  const [newSlideSubtitle, setNewSlideSubtitle] = useState('');
+  const [newSlideTag, setNewSlideTag] = useState('');
+  const [newSlideCta, setNewSlideCta] = useState('تسوق الآن');
+  const [newSlideImage, setNewSlideImage] = useState('');
+  const [newSlideCategory, setNewSlideCategory] = useState('all');
+
+  // Category Form State
+  const [newCatNameAr, setNewCatNameAr] = useState('');
+  const [newCatNameEn, setNewCatNameEn] = useState('');
+  const [newCatId, setNewCatId] = useState('');
 
   // Orders Filter
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
@@ -77,7 +102,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Settings State Form
   const [tempSettings, setTempSettings] = useState<StoreSettings>({ ...settings });
-  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Live Chat Reply in Admin
   const [adminReplyText, setAdminReplyText] = useState('');
@@ -101,12 +126,13 @@ export const AdminDashboard: React.FC = () => {
     setEditingProduct(null);
     setProdName('');
     setProdNameEn('');
-    setProdCategory('electronics');
+    setProdCategory(categories[0]?.id || 'electronics');
     setProdPrice(0);
     setProdOriginalPrice(undefined);
     setProdStock(10);
     setProdDescription('');
-    setProdImageUrl('');
+    setProdImages([]);
+    setProdVideoUrl('');
     setProdFeatures('');
     setIsAddModalOpen(true);
   };
@@ -120,7 +146,8 @@ export const AdminDashboard: React.FC = () => {
     setProdOriginalPrice(prod.originalPrice);
     setProdStock(prod.stockCount);
     setProdDescription(prod.description);
-    setProdImageUrl(prod.images[0] || '');
+    setProdImages(prod.images || []);
+    setProdVideoUrl(prod.videoUrl || '');
     setProdFeatures(prod.features ? prod.features.join('\n') : '');
     setIsAddModalOpen(true);
   };
@@ -131,20 +158,7 @@ export const AdminDashboard: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
-          setProdImageUrl(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleGatewayLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setTempSettings(prev => ({ ...prev, onlineGatewayLogoUrl: reader.result as string }));
+          setProdImages(prev => [...prev, reader.result as string]);
         }
       };
       reader.readAsDataURL(file);
@@ -154,7 +168,7 @@ export const AdminDashboard: React.FC = () => {
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     const featuresList = prodFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-    const finalImage = prodImageUrl.trim() || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80';
+    const finalImages = prodImages.length > 0 ? prodImages : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80'];
 
     if (editingProduct) {
       updateProduct(editingProduct.id, {
@@ -166,7 +180,8 @@ export const AdminDashboard: React.FC = () => {
         stockCount: Number(prodStock),
         inStock: Number(prodStock) > 0,
         description: prodDescription,
-        images: [finalImage],
+        images: finalImages,
+        videoUrl: prodVideoUrl.trim() || undefined,
         features: featuresList
       });
     } else {
@@ -179,10 +194,11 @@ export const AdminDashboard: React.FC = () => {
         stockCount: Number(prodStock),
         inStock: Number(prodStock) > 0,
         description: prodDescription,
-        images: [finalImage],
+        images: finalImages,
+        videoUrl: prodVideoUrl.trim() || undefined,
         features: featuresList,
-        rating: 5.0,
-        reviewsCount: 1,
+        rating: 0,
+        reviewsCount: 0,
         isFeatured: true
       });
     }
@@ -190,11 +206,49 @@ export const AdminDashboard: React.FC = () => {
     setIsAddModalOpen(false);
   };
 
+  // ANIMATED SAVE WITH TOAST NOTIFICATION
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    updateSettings(tempSettings);
-    setSettingsSaved(true);
-    setTimeout(() => setSettingsSaved(false), 2500);
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      updateSettings(tempSettings);
+    }, 400);
+  };
+
+  const handleAddSlide = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSlideTitle || !newSlideImage) return;
+    addSlide({
+      title: newSlideTitle,
+      subtitle: newSlideSubtitle,
+      tag: newSlideTag || 'عرض خاص',
+      ctaText: newSlideCta || 'تسوق الآن',
+      targetCategory: newSlideCategory || 'all',
+      image: newSlideImage
+    });
+    setNewSlideTitle('');
+    setNewSlideSubtitle('');
+    setNewSlideTag('');
+    setNewSlideImage('');
+    triggerSaveFeedback();
+  };
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatNameAr) return;
+    const catId = newCatId.trim().toLowerCase().replace(/\s+/g, '-') || `cat-${Date.now()}`;
+    addCategory({
+      id: catId,
+      nameAr: newCatNameAr,
+      nameEn: newCatNameEn || newCatNameAr,
+      icon: 'Layers',
+      itemCount: 0
+    });
+    setNewCatNameAr('');
+    setNewCatNameEn('');
+    setNewCatId('');
+    triggerSaveFeedback();
   };
 
   const handleSendAdminReply = (e: React.FormEvent) => {
@@ -217,6 +271,7 @@ export const AdminDashboard: React.FC = () => {
     setNewRuleTitle('');
     setNewRuleKeywords('');
     setNewRuleReply('');
+    triggerSaveFeedback();
   };
 
   const handleCreateCoupon = (e: React.FormEvent) => {
@@ -230,6 +285,7 @@ export const AdminDashboard: React.FC = () => {
       isActive: true
     });
     setNewCouponCode('');
+    triggerSaveFeedback();
   };
 
   // Export orders to CSV
@@ -249,39 +305,6 @@ export const AdminDashboard: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Export Marketplace CSV
-  const exportMarketplaceCSV = (platform: 'amazon' | 'noon' | 'jumia') => {
-    let headers = '';
-    let rows = '';
-
-    if (platform === 'amazon') {
-      headers = 'item_sku,item_name,external_product_id,standard_price,quantity,category,description\n';
-      rows = products.map(p => 
-        `"${p.id}","${p.name}","EAN-${p.id}","${p.price}","${p.stockCount}","${p.category}","${p.description.replace(/"/g, '""')}"`
-      ).join('\n');
-    } else if (platform === 'noon') {
-      headers = 'partner_sku,product_title,price_egp,available_quantity,category_code,warranty\n';
-      rows = products.map(p => 
-        `"${p.id}","${p.name}","${p.price}","${p.stockCount}","${p.category}","1 Year"`
-      ).join('\n');
-    } else {
-      headers = 'SellerSKU,Name,Price,Stock,Category,Description\n';
-      rows = products.map(p => 
-        `"${p.id}","${p.name}","${p.price}","${p.stockCount}","${p.category}","${p.description.replace(/"/g, '""')}"`
-      ).join('\n');
-    }
-
-    const blob = new Blob(['\uFEFF' + headers + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `mortafaat-${platform}-catalog.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Filtered orders
   const filteredOrders = orders.filter(o => {
     const matchesStatus = orderStatusFilter === 'all' || o.status === orderStatusFilter;
     const matchesSearch = !orderSearch.trim() || 
@@ -292,101 +315,68 @@ export const AdminDashboard: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] pb-16">
+    <div className="min-h-screen bg-[#F4F6F8] dark:bg-[#07090E] text-black dark:text-white pb-16 transition-colors">
       
-      {/* Top Admin Sub-Header */}
-      <div className="bg-brand-charcoal text-white px-4 py-3 border-b border-brand-border shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-xs font-bold text-gray-300">
-              متصل بالمتجر كمسؤول إداري | الدفع الحالي: <span className="text-brand-gold">الدفع عند الاستلام (مع المعاينة)</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span>رقم التواصل المعتمد:</span>
-            <strong className="text-white font-mono">{settings.phone}</strong>
-          </div>
+      {/* Save Feedback Toast Alert */}
+      {saveFeedbackToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 font-bold text-sm animate-bounce">
+          <CheckCircle2 className="w-5 h-5 text-white" />
+          <span>✓ تم حفظ كافة التعديلات وتفعيلها بنجاح في المتجر!</span>
         </div>
-      </div>
-
-      {/* KPI Cards Row */}
-      <div className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs text-gray-500 font-semibold">إجمالي المبيعات</span>
-              <p className="text-lg sm:text-2xl font-black text-brand-black mt-1">
-                {totalSales.toLocaleString()} <span className="text-xs text-gray-500">ج.م</span>
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 text-brand-goldDark flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs text-gray-500 font-semibold">طلبات جديدة معلقة</span>
-              <p className="text-lg sm:text-2xl font-black text-amber-600 mt-1">
-                {pendingOrders} <span className="text-xs text-gray-500">جديد</span>
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs text-gray-500 font-semibold">رسائل شات الزوار</span>
-              <p className="text-lg sm:text-2xl font-black text-blue-600 mt-1">
-                {chatMessages.length} <span className="text-xs text-gray-500">رسالة</span>
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-          </div>
-
-          <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
-            <div>
-              <span className="text-xs text-gray-500 font-semibold">المنتجات المعروضة</span>
-              <p className="text-lg sm:text-2xl font-black text-brand-black mt-1">
-                {products.length} <span className="text-xs text-gray-500">منتج</span>
-              </p>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <Package className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Tabs Navigation */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="flex border-b border-gray-200 bg-white rounded-2xl px-2 shadow-xs overflow-x-auto scrollbar-none">
+        <div className="flex border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl px-2 shadow-xs overflow-x-auto scrollbar-none">
           
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'overview' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <LayoutTemplate className="w-4 h-4 text-brand-goldDark" />
+            <span>نظرة عامة وإحصائيات</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('slides')}
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'slides' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <ImageIcon className="w-4 h-4 text-brand-goldDark" />
+            <span>صور وإعلانات الواجهة ({slides.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('categories')}
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'categories' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-brand-goldDark" />
+            <span>إدارة الأقسام ({categories.length})</span>
+          </button>
+
           <button
             onClick={() => setActiveTab('products')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'products' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'products' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             <Package className="w-4 h-4 text-brand-goldDark" />
-            <span>إدارة المنتجات ({products.length})</span>
+            <span>المنتجات والمخزون ({products.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('orders')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'orders' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'orders' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             <ShoppingCart className="w-4 h-4 text-brand-goldDark" />
-            <span>الطلبات الواردة ({orders.length})</span>
+            <span>الطلبات ({orders.length})</span>
             {pendingOrders > 0 && (
               <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                 {pendingOrders}
@@ -397,93 +387,395 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('live-chat')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'live-chat' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'live-chat' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             <MessageSquare className="w-4 h-4 text-brand-goldDark" />
-            <span>محادثات الزوار الحية</span>
-            <span className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
-              Live
-            </span>
+            <span>شات الزوار الحي</span>
           </button>
 
           <button
             onClick={() => setActiveTab('bot-training')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'bot-training' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'bot-training' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             <Bot className="w-4 h-4 text-brand-goldDark" />
-            <span>تعليم وبرمجة البوت ({botRules.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('gateway')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'gateway' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <CreditCard className="w-4 h-4 text-brand-goldDark" />
-            <span>بوابة الدفع واللوجو (كاشير / فوري)</span>
+            <span>تعليم البوت ({botRules.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('coupons')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'coupons' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'coupons' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             <Tag className="w-4 h-4 text-brand-goldDark" />
-            <span>كوبونات الخصم ({coupons.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('policies')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'policies' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <FileText className="w-4 h-4 text-brand-goldDark" />
-            <span>سياسات تفعيل الدفع</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('marketplaces')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'marketplaces' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4 text-brand-goldDark" />
-            <span>تصدير أمازون ونون</span>
+            <span>الكوبونات ({coupons.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'settings' ? 'border-brand-gold text-brand-black bg-amber-50/50' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'settings' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             <SettingsIcon className="w-4 h-4 text-brand-goldDark" />
-            <span>إعدادات المتجر و PIN</span>
+            <span>إعدادات المتجر وسرعة السلايدر</span>
           </button>
         </div>
       </div>
 
-      {/* Tab Contents */}
+      {/* Main Tab Content */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
         
-        {/* TAB 1: PRODUCTS */}
+        {/* TAB 1: EXECUTIVE OVERVIEW (الصفحة الرئيسية للإدارة) */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            
+            {/* Welcome Banner */}
+            <div className="p-6 rounded-3xl bg-gradient-to-r from-zinc-950 via-brand-black to-zinc-900 text-white border border-brand-gold/30 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-brand-gold text-xs font-bold uppercase tracking-wider">مرحباً بك في لوحة تحكم</span>
+                <h2 className="text-2xl sm:text-3xl font-black mt-1">مرتفعات ستور (Mortafaat Store)</h2>
+                <p className="text-xs text-gray-400 mt-1 max-w-xl">
+                  لديك كامل الصلاحية للتحكم في صور السلايدر، مدة عرضها، إضافة أقسام جديدة، وتعديل كل كلمة في المتجر.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentView('store')}
+                  className="px-4 py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
+                >
+                  معاينة المتجر المباشر
+                </button>
+              </div>
+            </div>
+
+            {/* Quick KPI Overview */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm">
+                <span className="text-xs text-gray-500">إجمالي المبيعات</span>
+                <p className="text-xl font-black text-brand-goldDark mt-1">{totalSales.toLocaleString()} ج.م</p>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm">
+                <span className="text-xs text-gray-500">الطلبات المعلقة</span>
+                <p className="text-xl font-black text-amber-600 mt-1">{pendingOrders} طلبات</p>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm">
+                <span className="text-xs text-gray-500">الأقسام النشطة</span>
+                <p className="text-xl font-black text-purple-600 mt-1">{categories.length} أقسام</p>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm">
+                <span className="text-xs text-gray-500">إجمالي المنتجات</span>
+                <p className="text-xl font-black text-emerald-600 mt-1">{products.length} منتجات</p>
+              </div>
+            </div>
+
+            {/* Quick Launchpad Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div 
+                onClick={() => setActiveTab('slides')} 
+                className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-200 dark:border-zinc-800 hover:border-brand-gold cursor-pointer transition-all shadow-sm flex items-center gap-3"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-brand-goldDark flex items-center justify-center">
+                  <ImageIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">تعديل صور وسلايدر الواجهة</h4>
+                  <p className="text-[11px] text-gray-500">تحكم بالصور، النصوص، وسرعة التبديل</p>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setActiveTab('categories')} 
+                className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-200 dark:border-zinc-800 hover:border-brand-gold cursor-pointer transition-all shadow-sm flex items-center gap-3"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">إضافة أقسام وفئات جديدة</h4>
+                  <p className="text-[11px] text-gray-500">توسيع المتجر بأي فئة تريدها</p>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setActiveTab('products')} 
+                className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-200 dark:border-zinc-800 hover:border-brand-gold cursor-pointer transition-all shadow-sm flex items-center gap-3"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                  <Plus className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">إضافة منتجات وتعديل الأسعار</h4>
+                  <p className="text-[11px] text-gray-500">رفع صور متعددة وفيديوهات</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 2: HERO SLIDES & SLIDER SPEED CONTROL */}
+        {activeTab === 'slides' && (
+          <div className="space-y-6">
+            
+            {/* Slider Duration Control Card */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-brand-gold text-black flex items-center justify-center font-bold">
+                  <Timer className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">سرعة تبديل صور السلايدر تلقائياً:</h4>
+                  <p className="text-xs text-gray-500">حدد كم ثانية تظل الصورة معروضة قبل الانتقال للتالية</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min={2}
+                  max={30}
+                  value={tempSettings.sliderIntervalSeconds}
+                  onChange={(e) => setTempSettings({ ...tempSettings, sliderIntervalSeconds: Number(e.target.value) })}
+                  className="w-20 px-3 py-1.5 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-center font-bold text-sm"
+                />
+                <span className="text-xs font-bold">ثوانٍ</span>
+
+                <button
+                  onClick={handleSaveSettings}
+                  className="px-4 py-1.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md"
+                >
+                  حفظ السرعة
+                </button>
+              </div>
+            </div>
+
+            {/* Add New Slide Form */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <Plus className="w-4 h-4 text-brand-goldDark" />
+                <span>إضافة إعلان أو بانر جديد في أول المتجر</span>
+              </h3>
+
+              <form onSubmit={handleAddSlide} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="font-bold block mb-1">العنوان الرئيسي للبانر *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: عروض الشتاء الكبرى"
+                    value={newSlideTitle}
+                    onChange={(e) => setNewSlideTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">الوصف التوضيحي للبانر</label>
+                  <input
+                    type="text"
+                    placeholder="مثال: خصومات حصرية حتى 50% على الملابس"
+                    value={newSlideSubtitle}
+                    onChange={(e) => setNewSlideSubtitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">رابط صورة البانر *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="https://images.unsplash.com/..."
+                    value={newSlideImage}
+                    onChange={(e) => setNewSlideImage(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">الوسم الصغير (Tag)</label>
+                  <input
+                    type="text"
+                    placeholder="مثال: وصل حديثاً 2026"
+                    value={newSlideTag}
+                    onChange={(e) => setNewSlideTag(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">نص زر الشراء</label>
+                  <input
+                    type="text"
+                    placeholder="تسوق الآن"
+                    value={newSlideCta}
+                    onChange={(e) => setNewSlideCta(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
+                  >
+                    + إضافة هذا البانر للسلايدر
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Current Slides List */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
+              <h3 className="text-base font-black">البانرات المعروضة حالياً في واجهة المتجر ({slides.length}):</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {slides.map((s, idx) => (
+                  <div key={s.id || idx} className="rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden bg-gray-50 dark:bg-zinc-800/60 flex flex-col justify-between">
+                    <div className="h-32 w-full overflow-hidden relative">
+                      <img src={s.image} alt="" className="w-full h-full object-cover" />
+                      <span className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                        {s.tag}
+                      </span>
+                    </div>
+
+                    <div className="p-3 space-y-1 text-xs">
+                      <h4 className="font-bold line-clamp-1">{s.title}</h4>
+                      <p className="text-gray-500 dark:text-gray-400 text-[11px] line-clamp-2">{s.subtitle}</p>
+                    </div>
+
+                    <div className="p-2.5 border-t border-gray-200 dark:border-zinc-700 flex justify-end">
+                      <button
+                        onClick={() => deleteSlide(s.id)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                        title="حذف هذا البانر"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 3: DYNAMIC CATEGORIES MANAGER */}
+        {activeTab === 'categories' && (
+          <div className="space-y-6">
+            
+            {/* Add Category Form */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <Plus className="w-4 h-4 text-brand-goldDark" />
+                <span>إضافة قسم جديد لمتجر مرتفعات ستور</span>
+              </h3>
+
+              <form onSubmit={handleAddCategory} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <label className="font-bold block mb-1">اسم القسم بالعربي *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: ساعات وإكسسوارات"
+                    value={newCatNameAr}
+                    onChange={(e) => setNewCatNameAr(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">اسم القسم بالإنجليزي</label>
+                  <input
+                    type="text"
+                    placeholder="Example: Watches & Accessories"
+                    value={newCatNameEn}
+                    onChange={(e) => setNewCatNameEn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">كود القسم بالإنجليزية (ID)</label>
+                  <input
+                    type="text"
+                    placeholder="watches"
+                    value={newCatId}
+                    onChange={(e) => setNewCatId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 font-mono"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
+                  >
+                    + إنشاء وتفعيل القسم
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Categories List */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
+              <h3 className="text-base font-black">الأقسام المتوفرة حالياً في المتجر ({categories.length}):</h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {categories.map((cat) => (
+                  <div key={cat.id} className="p-3.5 rounded-2xl border border-gray-200 dark:border-zinc-800 flex items-center justify-between bg-gray-50/70 dark:bg-zinc-800/60">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-brand-gold/15 text-brand-goldDark flex items-center justify-center font-bold">
+                        <Layers className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-xs">{cat.nameAr}</h4>
+                        <span className="text-[10px] text-gray-500 font-mono">{cat.nameEn}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (categories.length <= 1) {
+                          alert('يجب أن يتبقى قسم واحد على الأقل في المتجر!');
+                          return;
+                        }
+                        deleteCategory(cat.id);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg"
+                      title="حذف هذا القسم"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 4: PRODUCTS */}
         {activeTab === 'products' && (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-6">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <div>
-                <h3 className="text-base font-black text-gray-900">قائمة منتجات المتجر</h3>
-                <p className="text-xs text-gray-500">أضف، عدل، أو احذف أي منتج في أي قسم</p>
+                <h3 className="text-base font-black">قائمة منتجات المتجر</h3>
+                <p className="text-xs text-gray-500">أضف صوراً وفيديوهات ومميزات لكل منتج</p>
               </div>
 
               <button
                 onClick={openAddProduct}
-                className="px-4 py-2.5 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs flex items-center justify-center gap-2 hover:brightness-105 shadow-md shadow-brand-gold/30 transition-transform active:scale-95"
+                className="px-4 py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs flex items-center justify-center gap-2 hover:brightness-105 shadow-md"
               >
                 <Plus className="w-4 h-4" />
                 <span>إضافة منتج جديد الآن</span>
@@ -492,7 +784,7 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="overflow-x-auto">
               <table className="w-full text-right text-xs">
-                <thead className="bg-gray-50 text-gray-600 border-y border-gray-200">
+                <thead className="bg-gray-50 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border-y border-gray-200 dark:border-zinc-700">
                   <tr>
                     <th className="py-3 px-3">المنتج</th>
                     <th className="py-3 px-3">القسم</th>
@@ -501,28 +793,23 @@ export const AdminDashboard: React.FC = () => {
                     <th className="py-3 px-3 text-center">إجراءات</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
                   {products.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50/80 transition-colors">
+                    <tr key={p.id} className="hover:bg-gray-50/80 dark:hover:bg-zinc-800/40 transition-colors">
                       <td className="py-3 px-3 flex items-center gap-3">
                         <img src={p.images[0]} alt="" className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0 border" />
                         <div>
-                          <p className="font-bold text-gray-900 line-clamp-1">{p.name}</p>
-                          <span className="text-[10px] text-gray-400 font-mono">ID: {p.id}</span>
+                          <p className="font-bold line-clamp-1">{p.name}</p>
+                          <span className="text-[10px] text-gray-400 font-mono">صور: {p.images?.length || 1} {p.videoUrl ? '• مع فيديو' : ''}</span>
                         </div>
                       </td>
                       <td className="py-3 px-3">
-                        <span className="bg-gray-100 px-2 py-1 rounded-md text-[11px] font-semibold text-gray-700">
+                        <span className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-md text-[11px] font-semibold">
                           {p.category}
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-bold text-brand-black">
+                      <td className="py-3 px-3 font-bold text-brand-goldDark">
                         {p.price} ج.م
-                        {p.originalPrice && (
-                          <span className="text-[10px] text-gray-400 line-through block">
-                            {p.originalPrice} ج.م
-                          </span>
-                        )}
                       </td>
                       <td className="py-3 px-3">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -536,7 +823,6 @@ export const AdminDashboard: React.FC = () => {
                           <button
                             onClick={() => openEditProduct(p)}
                             className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="تعديل المنتج"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
@@ -547,7 +833,6 @@ export const AdminDashboard: React.FC = () => {
                               }
                             }}
                             className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                            title="حذف المنتج"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -561,720 +846,206 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2: ORDERS */}
+        {/* TAB 5: ORDERS */}
         {activeTab === 'orders' && (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-6 space-y-5">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-4 sm:p-6 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-black text-gray-900">سجل الطلبات الواردة</h3>
-                <p className="text-xs text-gray-500">إدارة وشحن طلبات العملاء</p>
+                <h3 className="text-base font-black">سجل الطلبات الواردة</h3>
+                <p className="text-xs text-gray-500">إدارة وشحن وتأكيد طلبات المشترين</p>
               </div>
 
               <button
                 onClick={exportOrdersCSV}
-                className="px-4 py-2 rounded-xl bg-brand-black text-white hover:bg-brand-gold hover:text-black font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-sm"
+                className="px-4 py-2 rounded-xl bg-black text-white hover:bg-brand-gold hover:text-black font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 <Download className="w-4 h-4" />
-                <span>تصدير الطلبات إلى إكسيل (CSV)</span>
+                <span>تصدير الطلبات (CSV)</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2 relative">
-                <input
-                  type="text"
-                  placeholder="ابحث برقم الطلب، اسم العميل، أو رقم الهاتف..."
-                  value={orderSearch}
-                  onChange={(e) => setOrderSearch(e.target.value)}
-                  className="w-full px-3 py-2 pr-9 text-xs rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"
-                />
-                <Search className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
-              </div>
-
-              <div>
-                <select
-                  value={orderStatusFilter}
-                  onChange={(e) => setOrderStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none bg-white font-semibold"
-                >
-                  <option value="all">جميع الحالات</option>
-                  <option value="pending">قيد المراجعة</option>
-                  <option value="processing">جاري التجهيز</option>
-                  <option value="shipped">تم الشحن مع المندوب</option>
-                  <option value="delivered">تم التسليم</option>
-                  <option value="cancelled">ملغي</option>
-                </select>
-              </div>
-            </div>
-
-            {filteredOrders.length === 0 ? (
-              <p className="text-center py-12 text-gray-500 text-xs">لا توجد طلبات تطابق بحثك حالياً.</p>
-            ) : (
-              <div className="space-y-3">
-                {filteredOrders.map((ord) => (
-                  <div key={ord.id} className="p-4 rounded-2xl border border-gray-200 bg-gray-50/60 space-y-3 hover:border-brand-gold transition-colors">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-200 pb-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-sm text-brand-black">#{ord.id}</span>
-                        <span className="text-xs text-gray-400">({ord.createdAt})</span>
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
-                          {ord.paymentMethod === 'cod' ? '💵 دفع عند الاستلام' : '💳 دفع إلكتروني'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-700">حالة الشحن:</span>
-                        <select
-                          value={ord.status}
-                          onChange={(e) => updateOrderStatus(ord.id, e.target.value as Order['status'])}
-                          className={`text-xs font-bold px-3 py-1 rounded-xl border focus:outline-none ${
-                            ord.status === 'delivered' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
-                            ord.status === 'shipped' ? 'bg-blue-50 text-blue-800 border-blue-300' :
-                            ord.status === 'cancelled' ? 'bg-red-50 text-red-800 border-red-300' :
-                            'bg-amber-50 text-amber-800 border-amber-300'
-                          }`}
-                        >
-                          <option value="pending">قيد المراجعة</option>
-                          <option value="processing">جاري التجهيز</option>
-                          <option value="shipped">تم الشحن مع المندوب</option>
-                          <option value="delivered">تم التسليم بنجاح</option>
-                          <option value="cancelled">ملغي</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <span className="text-gray-400 block text-[10px]">العميل:</span>
-                        <p className="font-bold text-gray-900">{ord.customerName}</p>
-                        <a href={`tel:${ord.phone}`} className="text-brand-goldDark font-mono font-bold hover:underline">
-                          {ord.phone}
-                        </a>
-                      </div>
-
-                      <div>
-                        <span className="text-gray-400 block text-[10px]">عنوان التوصيل:</span>
-                        <p className="font-semibold text-gray-800">{ord.governorate} - {ord.address}</p>
-                        {ord.notes && <p className="text-gray-500 italic mt-0.5">ملاحظة: {ord.notes}</p>}
-                      </div>
-
-                      <div>
-                        <span className="text-gray-400 block text-[10px]">المبلغ الإجمالي:</span>
-                        <p className="font-black text-sm text-brand-goldDark">{ord.total.toLocaleString()} ج.م</p>
-                        {ord.couponCode && (
-                          <span className="text-[10px] text-emerald-700 block">
-                            كوبون: {ord.couponCode} (خصم {ord.discountAmount} ج.م)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-2.5 rounded-xl border border-gray-200">
-                      <span className="text-[11px] font-bold text-gray-700 block mb-1">المنتجات:</span>
-                      <div className="space-y-1">
-                        {ord.items.map((item, i) => (
-                          <div key={i} className="flex justify-between text-xs text-gray-600">
-                            <span>- {item.product.name} (عدد: {item.quantity})</span>
-                            <span className="font-semibold">{item.product.price * item.quantity} ج.م</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: LIVE CUSTOMER CHAT DESK */}
-        {activeTab === 'live-chat' && (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-5 sm:p-7 space-y-5">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-              <div>
-                <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                  <span>غرفة محادثات وخدمة عملاء المتجر المباشرة</span>
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  تظهر هنا جميع رسائل العملاء لحظياً في المتجر، ويمكنك الرد عليهم مباشرة من هنا!
-                </p>
-              </div>
-
-              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                قناة متصلة حية
-              </span>
-            </div>
-
-            {/* Messages Stream */}
-            <div className="h-[360px] overflow-y-auto bg-gray-50 rounded-2xl p-4 border border-gray-200 space-y-3">
-              {chatMessages.map((msg) => (
-                <div 
-                  key={msg.id}
-                  className={`p-3 rounded-2xl max-w-lg text-xs ${
-                    msg.sender === 'user' 
-                      ? 'bg-brand-black text-white ml-auto' 
-                      : msg.sender === 'support'
-                      ? 'bg-emerald-600 text-white mr-auto'
-                      : 'bg-white border border-gray-200 text-gray-800 mr-auto'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3 text-[10px] opacity-75 mb-1">
-                    <span className="font-bold">
-                      {msg.sender === 'user' ? 'العميل الزائر' : msg.sender === 'support' ? 'أنت (إدارة المتجر)' : 'البوت التلقائي'}
+            <div className="space-y-3">
+              {filteredOrders.map((ord) => (
+                <div key={ord.id} className="p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/50 space-y-3">
+                  <div className="flex justify-between items-center border-b border-gray-200 dark:border-zinc-700 pb-2">
+                    <span className="font-mono font-black text-sm">#{ord.id} ({ord.createdAt})</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                      الدفع عند الاستلام
                     </span>
-                    <span>{msg.time}</span>
                   </div>
-                  <p className="leading-relaxed whitespace-pre-line">{msg.text}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <span className="text-gray-400 block text-[10px]">العميل:</span>
+                      <p className="font-bold">{ord.customerName}</p>
+                      <p className="font-mono">{ord.phone}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 block text-[10px]">العنوان:</span>
+                      <p>{ord.governorate} - {ord.address}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-400 block text-[10px]">المبلغ:</span>
+                      <p className="font-black text-sm text-brand-goldDark">{ord.total} ج.م</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
+          </div>
+        )}
 
-            {/* Admin Direct Reply Box */}
+        {/* TAB 6: LIVE CHAT */}
+        {activeTab === 'live-chat' && (
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-7 space-y-4">
+            <h3 className="text-base font-black">غرفة الرد المباشر على الزوار</h3>
+            <div className="h-72 overflow-y-auto bg-gray-50 dark:bg-zinc-950 rounded-2xl p-4 border border-gray-200 dark:border-zinc-800 space-y-3">
+              {chatMessages.map((msg) => (
+                <div key={msg.id} className={`p-3 rounded-2xl max-w-md text-xs ${msg.sender === 'user' ? 'bg-black text-white ml-auto' : 'bg-emerald-600 text-white mr-auto'}`}>
+                  <span className="text-[10px] block opacity-75">{msg.sender === 'user' ? 'العميل' : 'الإدارة'} • {msg.time}</span>
+                  <p>{msg.text}</p>
+                </div>
+              ))}
+            </div>
             <form onSubmit={handleSendAdminReply} className="flex gap-2">
               <input
                 type="text"
-                placeholder="اكتب ردك للعميل كـ (إدارة مرتفعات ستور)..."
+                placeholder="اكتب ردك للعميل..."
                 value={adminReplyText}
                 onChange={(e) => setAdminReplyText(e.target.value)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-xs focus:border-brand-gold focus:outline-none"
+                className="flex-1 px-4 py-2 text-xs rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
               />
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-md"
-              >
-                <Send className="w-4 h-4" />
-                <span>إرسال الرد</span>
+              <button type="submit" className="px-5 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl">
+                إرسال الرد
               </button>
             </form>
           </div>
         )}
 
-        {/* TAB 4: BOT TRAINING & KNOWLEDGE */}
+        {/* TAB 7: BOT TRAINING */}
         {activeTab === 'bot-training' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-5 sm:p-7">
-              <div className="border-b border-gray-100 pb-4 mb-5">
-                <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-brand-goldDark" />
-                  <span>مركز تعليم وبرمجة المساعد الذكي (Smart Bot Training)</span>
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  علم البوت ما يجب أن يرد به عند ذكر كلمات مفتاحية معينة (مثل: عروض المنتجات، الهدايا، الشحن المجاني، أو أسعار محددة).
-                </p>
-              </div>
-
-              {/* Add New Rule Form */}
-              <form onSubmit={handleAddBotRule} className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 text-xs space-y-3 mb-6">
-                <h4 className="font-bold text-gray-900 flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-brand-goldDark" />
-                  <span>إضافة قاعدة رد وتوجيه جديدة للبوت:</span>
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-gray-700 block mb-1">عنوان القاعدة (للتنظيم):</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="مثال: عرض اشتري 2 واحصل على هدية"
-                      value={newRuleTitle}
-                      onChange={(e) => setNewRuleTitle(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-gray-700 block mb-1">الكلمات المفتاحية (افصل بينها بفاصلة):</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="مثال: قطعتين, هدية, عرض, اثنين"
-                      value={newRuleKeywords}
-                      onChange={(e) => setNewRuleKeywords(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">الرد الذي سيقوله البوت للعميل عند مطابقة الكلمات:</label>
-                  <textarea
-                    rows={2}
-                    required
-                    placeholder="اكتب رد البوت بالتفصيل هنا..."
-                    value={newRuleReply}
-                    onChange={(e) => setNewRuleReply(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold bg-white"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="px-6 py-2 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs shadow-md hover:brightness-105"
-                >
-                  + حفظ وتعليم البوت هذه القاعدة
-                </button>
-              </form>
-
-              {/* Rules List */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-sm text-gray-900">القواعد والتعليمات النشطة للبوت:</h4>
-                {botRules.map((r) => (
-                  <div key={r.id} className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-start justify-between gap-3 text-xs">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900">{r.title}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'}`}>
-                          {r.isActive ? 'مفعل' : 'معطل'}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1">
-                        <span className="text-[10px] text-gray-500 font-bold">الكلمات:</span>
-                        {r.keywords.map((kw, i) => (
-                          <span key={i} className="bg-white border border-gray-200 text-gray-700 text-[10px] px-1.5 py-0.5 rounded">
-                            {kw}
-                          </span>
-                        ))}
-                      </div>
-
-                      <p className="text-gray-700 bg-white p-2.5 rounded-xl border border-gray-100 text-[11px] leading-relaxed">
-                        💬 <strong>الرد:</strong> {r.replyText}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => toggleBotRule(r.id)}
-                        className="px-3 py-1 rounded-lg text-[11px] font-bold bg-gray-200 hover:bg-gray-300 text-gray-700"
-                      >
-                        {r.isActive ? 'تعطيل' : 'تفعيل'}
-                      </button>
-                      <button
-                        onClick={() => deleteBotRule(r.id)}
-                        className="p-1 text-gray-400 hover:text-red-600 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: DYNAMIC PAYMENT GATEWAY (KASHIER / FAWRY / PAYMOB) */}
-        {activeTab === 'gateway' && (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-5 sm:p-7 space-y-6">
-            <div className="border-b border-gray-100 pb-4">
-              <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-brand-goldDark" />
-                <span>إعدادات بوابة الدفع الإلكتروني المعتمدة (كاشير / فوري)</span>
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                تُترك هذه الخانة معطلة أو فارغة الآن كما طلبت لحين تواصلك مع شركة الدفع ومعاينة موقعك، ثم تفعّلها وتلصق شعارهم بضغطة زر واحدة.
-              </p>
-            </div>
-
-            {/* Educational Help Notice for Kashier/Fawry Approval */}
-            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-2">
-              <p className="font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-amber-800" />
-                <span>معلومة هامة جداً عن شروط موافقة فوري وكاشير على متجرك:</span>
-              </p>
-              <p className="leading-relaxed text-[11px]">
-                شركات الدفع الإلكتروني (كاشير، فوري، باي موب) تدعم المواقع المبرمجة بالكامل (Custom Code / API) مثل متجرك هذا تماماً!
-                طلبهم الوحيد لتفعيل الحساب هو: أن يكون الموقع <strong>يعمل ومتاحاً على النت وفيه منتجات حقيقية، مع وجود سياسة استرجاع وشحن واضحة</strong>.
-                متجرك الآن يستوفي كافة هذه الشروط بنسبة 100%!
-              </p>
-            </div>
-
-            <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
-              
-              <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
-                <div>
-                  <span className="font-black text-sm text-gray-900 block">تفعيل بوابة الدفع الإلكتروني في صفحة الشراء:</span>
-                  <span className="text-[11px] text-gray-500">إذا كانت معطلة، سيظهر للعملاء فقط (الدفع عند الاستلام مع المعاينة).</span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tempSettings.isOnlinePaymentEnabled}
-                    onChange={(e) => setTempSettings({ ...tempSettings, isOnlinePaymentEnabled: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                </label>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">اسم بوابة الدفع التي اخترتها (مثال: كاشير أو فوري):</label>
-                  <input
-                    type="text"
-                    placeholder="مثال: كاشير (Kashier) / فوري باي (FawryPay)"
-                    value={tempSettings.onlineGatewayName}
-                    onChange={(e) => setTempSettings({ ...tempSettings, onlineGatewayName: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">لوجو الشركة (سيظهر للعملاء في صفحة الدفع):</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="رابط لوجو الشركة..."
-                      value={tempSettings.onlineGatewayLogoUrl}
-                      onChange={(e) => setTempSettings({ ...tempSettings, onlineGatewayLogoUrl: e.target.value })}
-                      className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-[11px]"
-                    />
-                    <label className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer flex items-center gap-1 border border-gray-300 flex-shrink-0">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>رفع اللوجو</span>
-                      <input type="file" accept="image/*" onChange={handleGatewayLogoUpload} className="hidden" />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">Merchant ID (معرف التاجر):</label>
-                  <input
-                    type="text"
-                    placeholder="يتم استلامه من فوري أو كاشير بعد الموافقة"
-                    value={tempSettings.onlineGatewayMerchantId}
-                    onChange={(e) => setTempSettings({ ...tempSettings, onlineGatewayMerchantId: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">API Key / Secret Key:</label>
-                  <input
-                    type="password"
-                    placeholder="المفتاح السري المشفر"
-                    value={tempSettings.onlineGatewayApiKey}
-                    onChange={(e) => setTempSettings({ ...tempSettings, onlineGatewayApiKey: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs shadow-md hover:brightness-105 flex items-center gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>حفظ إعدادات بوابة الدفع</span>
-                </button>
-                {settingsSaved && (
-                  <span className="text-emerald-600 font-bold text-xs mt-2 block animate-fade-in">
-                    ✓ تم حفظ إعدادات البوابة بنجاح!
-                  </span>
-                )}
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* TAB 6: COUPONS */}
-        {activeTab === 'coupons' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-5 space-y-4">
-              <h3 className="text-base font-black text-gray-900">إنشاء كود خصم جديد</h3>
-              <p className="text-xs text-gray-500">أضف كوبونات لتحفيز المبيعات</p>
-
-              <form onSubmit={handleCreateCoupon} className="space-y-3 text-xs">
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">رمز الكوبون *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: SALE20"
-                    value={newCouponCode}
-                    onChange={(e) => setNewCouponCode(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 font-mono uppercase focus:border-brand-gold"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="font-bold text-gray-700 block mb-1">نوع الخصم</label>
-                    <select
-                      value={newCouponType}
-                      onChange={(e) => setNewCouponType(e.target.value as any)}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white"
-                    >
-                      <option value="percentage">نسبة مئوية (%)</option>
-                      <option value="fixed">مبلغ ثابت (ج.م)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-bold text-gray-700 block mb-1">القيمة *</label>
-                    <input
-                      type="number"
-                      required
-                      value={newCouponValue}
-                      onChange={(e) => setNewCouponValue(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">حد أدنى للطلب (ج.م):</label>
-                  <input
-                    type="number"
-                    value={newCouponMin}
-                    onChange={(e) => setNewCouponMin(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-2.5 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs shadow-md"
-                >
-                  إضافة الكوبون الآن
-                </button>
-              </form>
-            </div>
-
-            <div className="md:col-span-2 bg-white rounded-3xl border border-gray-200 shadow-sm p-5 space-y-3">
-              <h3 className="text-base font-black text-gray-900">الكوبونات النشطة في المتجر</h3>
-              <div className="space-y-2.5">
-                {coupons.map((c) => (
-                  <div key={c.code} className="p-3.5 rounded-2xl border border-gray-200 flex items-center justify-between bg-gray-50/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-brand-goldDark flex items-center justify-center font-bold">
-                        <Tag className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="font-mono font-black text-sm text-brand-black">{c.code}</span>
-                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                          <span>الخصم: {c.discountType === 'percentage' ? `${c.discountValue}%` : `${c.discountValue} ج.م`}</span>
-                          {c.minOrderValue && <span>• حد أدنى: {c.minOrderValue} ج.م</span>}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toggleCoupon(c.code)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold ${c.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'}`}
-                      >
-                        {c.isActive ? 'مفعل' : 'معطل'}
-                      </button>
-                      <button onClick={() => deleteCoupon(c.code)} className="p-1.5 text-gray-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 7: STORE POLICIES (REQUIRED FOR APPROVAL) */}
-        {activeTab === 'policies' && (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-5 sm:p-7 max-w-3xl space-y-5">
-            <div>
-              <h3 className="text-base font-black text-gray-900">
-                سياسات المتجر (الشرط الأساسي لاعتماد بوابات الدفع)
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                عند تقديمك لشركة كاشير أو فوري، يدخل فريق المراجعة للتأكد من وجود هذه السياسات. يمكنك تعديلها في أي وقت.
-              </p>
-            </div>
-
-            <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">سياسة الاستبدال والاسترجاع:</label>
-                <textarea
-                  rows={3}
-                  value={tempSettings.returnPolicyText}
-                  onChange={(e) => setTempSettings({ ...tempSettings, returnPolicyText: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-7 space-y-5">
+            <h3 className="text-base font-black">تعليم وتدريب المساعد الذكي</h3>
+            <form onSubmit={handleAddBotRule} className="p-4 rounded-2xl bg-amber-50/60 dark:bg-zinc-800/60 border border-amber-200 dark:border-zinc-700 text-xs space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  required
+                  placeholder="عنوان القاعدة (مثال: عروض الهدايا)"
+                  value={newRuleTitle}
+                  onChange={(e) => setNewRuleTitle(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="الكلمات المفتاحية مفصولة بفاصلة (مثال: هدية, قطعتين)"
+                  value={newRuleKeywords}
+                  onChange={(e) => setNewRuleKeywords(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-900"
                 />
               </div>
-
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">سياسة الشحن والتوصيل لكافة المحافظات:</label>
-                <textarea
-                  rows={3}
-                  value={tempSettings.shippingPolicyText}
-                  onChange={(e) => setTempSettings({ ...tempSettings, shippingPolicyText: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">سياسة الخصوصية وشروط الاستخدام:</label>
-                <textarea
-                  rows={3}
-                  value={tempSettings.privacyPolicyText}
-                  onChange={(e) => setTempSettings({ ...tempSettings, privacyPolicyText: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs shadow-md"
-              >
-                تحديث وحفظ السياسات
+              <textarea
+                rows={2}
+                required
+                placeholder="الرد الذي سيقوله البوت للعميل..."
+                value={newRuleReply}
+                onChange={(e) => setNewRuleReply(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+              <button type="submit" className="px-6 py-2 bg-gold-gradient text-black font-extrabold text-xs rounded-xl shadow">
+                + تعليم البوت هذه القاعدة
               </button>
             </form>
           </div>
         )}
 
-        {/* TAB 8: MARKETPLACES */}
-        {activeTab === 'marketplaces' && (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-6 space-y-6">
-            <div>
-              <h3 className="text-base font-black text-gray-900">
-                تصدير شيتات أمازون ونون وجوميا
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                حمل شيت الإكسيل المتوافق وارفعه في حساب البائع بضغطة زر واحدة.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-5 rounded-2xl border-2 border-amber-300 bg-amber-50/40 flex flex-col justify-between space-y-4">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-900">أمازون مصر (Amazon.eg)</h4>
-                  <p className="text-xs text-gray-600 mt-1">ملف Flat File للرفع الجماعي في Seller Central.</p>
+        {/* TAB 8: COUPONS */}
+        {activeTab === 'coupons' && (
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 space-y-4">
+            <h3 className="text-base font-black">كوبونات الخصم النشطة</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {coupons.map((c) => (
+                <div key={c.code} className="p-3.5 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800 flex justify-between items-center text-xs">
+                  <div>
+                    <span className="font-mono font-black text-sm">{c.code}</span>
+                    <p className="text-gray-500 text-[11px]">{c.discountValue}% خصم</p>
+                  </div>
+                  <button onClick={() => deleteCoupon(c.code)} className="text-red-500">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => exportMarketplaceCSV('amazon')}
-                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-extrabold text-xs flex items-center justify-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>تصدير شيت أمازون (.CSV)</span>
-                </button>
-              </div>
-
-              <div className="p-5 rounded-2xl border-2 border-yellow-300 bg-yellow-50/40 flex flex-col justify-between space-y-4">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-900">نون مصر (Noon Partner)</h4>
-                  <p className="text-xs text-gray-600 mt-1">قالب الرفع الجماعي المعتمد لشركاء نون.</p>
-                </div>
-                <button
-                  onClick={() => exportMarketplaceCSV('noon')}
-                  className="w-full py-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-black font-extrabold text-xs flex items-center justify-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>تصدير شيت نون (.CSV)</span>
-                </button>
-              </div>
-
-              <div className="p-5 rounded-2xl border-2 border-orange-300 bg-orange-50/40 flex flex-col justify-between space-y-4">
-                <div>
-                  <h4 className="font-bold text-sm text-gray-900">جوميا مصر (Jumia Vendor)</h4>
-                  <p className="text-xs text-gray-600 mt-1">قالب إنشاء الأصناف لبوابة بائعي جوميا.</p>
-                </div>
-                <button
-                  onClick={() => exportMarketplaceCSV('jumia')}
-                  className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs flex items-center justify-center gap-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>تصدير شيت جوميا (.CSV)</span>
-                </button>
-              </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* TAB 9: GENERAL SETTINGS & PIN */}
+        {/* TAB 9: SETTINGS WITH ANIMATED FEEDBACK */}
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-6 max-w-2xl space-y-5">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-7 max-w-2xl space-y-5">
             <div>
-              <h3 className="text-base font-black text-gray-900">إعدادات الإدارة ورمز الدخول (PIN)</h3>
-              <p className="text-xs text-gray-500">عدل رمز المرور الخاص بلوحة الإدارة لضمان الخصوصية التامة</p>
+              <h3 className="text-base font-black">إعدادات المتجر العامة ورمز الـ PIN</h3>
+              <p className="text-xs text-gray-500">تحكم ببيانات المتجر ورقم الهاتف وأي نص معروض</p>
             </div>
 
             <form onSubmit={handleSaveSettings} className="space-y-4 text-xs">
-              <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200">
-                <label className="font-bold text-gray-900 block mb-1">
-                  رمز المرور السري للدخول للإدارة (Admin PIN):
-                </label>
+              <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700">
+                <label className="font-bold block mb-1">رمز الدخول للإدارة (Admin PIN):</label>
                 <input
                   type="text"
                   maxLength={6}
                   value={tempSettings.adminPin}
                   onChange={(e) => setTempSettings({ ...tempSettings, adminPin: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 font-mono text-center text-base tracking-widest font-black focus:border-brand-gold bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-900 font-mono text-center text-lg tracking-widest font-black"
                 />
-                <span className="text-[10px] text-gray-500 mt-1 block">
-                  الرمز الحالي للدخول: {tempSettings.adminPin || '1234'}
-                </span>
               </div>
 
               <div>
-                <label className="font-bold text-gray-700 block mb-1">اسم المتجر بالعربي:</label>
+                <label className="font-bold block mb-1">اسم المتجر بالعربي:</label>
                 <input
                   type="text"
                   value={tempSettings.storeNameAr}
                   onChange={(e) => setTempSettings({ ...tempSettings, storeNameAr: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-gray-700 block mb-1">رقم هاتف المتجر الأساسي والواتساب:</label>
+                <label className="font-bold block mb-1">رقم هاتف المتجر الأساسي والواتساب:</label>
                 <input
                   type="text"
                   value={tempSettings.phone}
                   onChange={(e) => setTempSettings({ ...tempSettings, phone: e.target.value, whatsapp: `2${e.target.value}` })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 font-mono font-bold"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 font-mono font-bold"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">تكلفة الشحن الافتراضية (ج.م):</label>
-                  <input
-                    type="number"
-                    value={tempSettings.shippingFee}
-                    onChange={(e) => setTempSettings({ ...tempSettings, shippingFee: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">حد الشحن المجاني (ج.م):</label>
-                  <input
-                    type="number"
-                    value={tempSettings.freeShippingThreshold}
-                    onChange={(e) => setTempSettings({ ...tempSettings, freeShippingThreshold: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300"
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="font-bold text-gray-700 block mb-1">شريط الإعلانات أعلى المتجر:</label>
+                <label className="font-bold block mb-1">شريط الإعلانات أعلى المتجر:</label>
                 <input
                   type="text"
                   value={tempSettings.announcementText}
                   onChange={(e) => setTempSettings({ ...tempSettings, announcementText: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
                 />
               </div>
 
+              {/* ANIMATED SAVE BUTTON */}
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs shadow-md"
+                disabled={isSaving}
+                className="px-8 py-3 rounded-2xl bg-gold-gradient text-black font-black text-xs hover:brightness-105 shadow-xl transition-all flex items-center gap-2 disabled:opacity-50"
               >
-                حفظ التعديلات
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    <span>جاري حفظ وتفعيل التعديلات...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>حفظ وتفعيل كافة التعديلات الآن</span>
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -1282,152 +1053,128 @@ export const AdminDashboard: React.FC = () => {
 
       </div>
 
-      {/* ADD/EDIT PRODUCT MODAL */}
+      {/* ADD/EDIT PRODUCT MODAL (Supports Multi-images + Video) */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="relative bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-brand-gold/40 my-6">
-            <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200">
-              <h3 className="font-black text-sm sm:text-base text-gray-900">
-                {editingProduct ? 'تعديل بيانات المنتج' : 'إضافة منتج جديد لمرتفعات ستور'}
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-brand-gold/40 my-6 space-y-4 text-xs">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-zinc-800">
+              <h3 className="font-black text-sm">
+                {editingProduct ? 'تعديل المنتج' : 'إضافة منتج جديد مع صور وفيديو'}
               </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-black">
-                ✕
-              </button>
+              <button onClick={() => setIsAddModalOpen(false)}>✕</button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveProduct} className="space-y-3">
               <div>
-                <label className="font-bold text-gray-700 block mb-1">اسم المنتج بالعربي *</label>
+                <label className="font-bold block mb-1">اسم المنتج بالعربي *</label>
                 <input
                   type="text"
                   required
-                  placeholder="مثال: ساعة ذكية ألترا مقاومة للماء"
                   value={prodName}
                   onChange={(e) => setProdName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">اسم المنتج بالإنجليزي (اختياري)</label>
-                <input
-                  type="text"
-                  placeholder="Example: Ultra Smartwatch"
-                  value={prodNameEn}
-                  onChange={(e) => setProdNameEn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-gray-700 block mb-1">القسم *</label>
+                  <label className="font-bold block mb-1">القسم *</label>
                   <select
                     value={prodCategory}
-                    onChange={(e) => setProdCategory(e.target.value as Product['category'])}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white"
+                    onChange={(e) => setProdCategory(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
                   >
-                    <option value="electronics">إلكترونيات</option>
-                    <option value="fashion">ملابس وأزياء</option>
-                    <option value="perfumes">عطور فاخرة</option>
-                    <option value="home">أدوات منزلية</option>
-                    <option value="personal-care">عناية شخصية</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.nameAr}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="font-bold text-gray-700 block mb-1">الكمية المتوفرة (المخزون) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={prodStock}
-                    onChange={(e) => setProdStock(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">سعر البيع الحالي (ج.م) *</label>
+                  <label className="font-bold block mb-1">سعر البيع (ج.م) *</label>
                   <input
                     type="number"
                     required
                     value={prodPrice}
                     onChange={(e) => setProdPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-gray-700 block mb-1">السعر الأصلي قبل الخصم (ج.م):</label>
-                  <input
-                    type="number"
-                    placeholder="اختياري لإظهار الخصم"
-                    value={prodOriginalPrice || ''}
-                    onChange={(e) => setProdOriginalPrice(e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
                   />
                 </div>
               </div>
 
+              {/* Multi-images manager */}
               <div>
-                <label className="font-bold text-gray-700 block mb-1">صورة المنتج:</label>
-                <div className="flex gap-2">
+                <label className="font-bold block mb-1">صور المنتج المتعددة (ستتبدل عشوائياً عند لمس الكارت):</label>
+                <div className="flex gap-2 mb-2">
                   <input
                     type="text"
-                    placeholder="ضع رابط صورة من الإنترنت..."
-                    value={prodImageUrl}
-                    onChange={(e) => setProdImageUrl(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-[11px]"
+                    placeholder="ضع رابط صورة إضافية..."
+                    value={prodNewImageInput}
+                    onChange={(e) => setProdNewImageInput(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[11px]"
                   />
-                  <label className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 cursor-pointer flex items-center gap-1 border border-gray-300">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>رفع صورة</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (prodNewImageInput.trim()) {
+                        setProdImages(prev => [...prev, prodNewImageInput.trim()]);
+                        setProdNewImageInput('');
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-black text-white font-bold"
+                  >
+                    + إضافة
+                  </button>
+                  <label className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer border border-gray-300 dark:border-zinc-700">
+                    <span>رفع</span>
                     <input type="file" accept="image/*" onChange={handleProductImageUpload} className="hidden" />
                   </label>
                 </div>
-                {prodImageUrl && (
-                  <div className="mt-2 w-14 h-14 rounded-lg overflow-hidden border border-gray-200">
-                    <img src={prodImageUrl} alt="" className="w-full h-full object-cover" />
-                  </div>
-                )}
+
+                {/* Previews */}
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {prodImages.map((img, i) => (
+                    <div key={i} className="relative w-12 h-12 rounded-lg border overflow-hidden flex-shrink-0">
+                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setProdImages(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute top-0 right-0 bg-red-600 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-bl"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Video URL */}
+              <div>
+                <label className="font-bold block mb-1">رابط فيديو المنتج (MP4 اختياري):</label>
+                <input
+                  type="text"
+                  placeholder="https://...video.mp4"
+                  value={prodVideoUrl}
+                  onChange={(e) => setProdVideoUrl(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[11px]"
+                />
               </div>
 
               <div>
-                <label className="font-bold text-gray-700 block mb-1">وصف المنتج:</label>
+                <label className="font-bold block mb-1">الوصف:</label>
                 <textarea
                   rows={2}
-                  placeholder="اكتب مواصفات المنتج وتفاصيله..."
                   value={prodDescription}
                   onChange={(e) => setProdDescription(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
                 />
               </div>
 
-              <div>
-                <label className="font-bold text-gray-700 block mb-1">المميزات (اكتب كل ميزة في سطر منفصل):</label>
-                <textarea
-                  rows={2}
-                  placeholder="ميزة 1&#10;ميزة 2&#10;ميزة 3"
-                  value={prodFeatures}
-                  onChange={(e) => setProdFeatures(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300"
-                />
-              </div>
-
-              <div className="pt-3 flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-2xl bg-gold-gradient text-brand-black font-extrabold text-xs hover:brightness-105 shadow-md"
-                >
-                  {editingProduct ? 'حفظ التعديلات' : 'نشر المنتج الآن في المتجر'}
+              <div className="flex gap-2 pt-2">
+                <button type="submit" className="flex-1 py-2.5 bg-gold-gradient text-black font-extrabold rounded-xl shadow">
+                  نشر وتحديث المنتج
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-3 rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 font-bold text-xs"
-                >
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2.5 bg-gray-100 dark:bg-zinc-800 rounded-xl">
                   إلغاء
                 </button>
               </div>

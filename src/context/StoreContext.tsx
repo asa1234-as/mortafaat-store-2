@@ -8,19 +8,29 @@ import {
   ChatMessage, 
   PaymentMethod, 
   Coupon,
-  BotKnowledgeRule
+  BotKnowledgeRule,
+  HeroSlide,
+  User,
+  ThemeMode,
+  Language
 } from '../types';
 import { 
   INITIAL_PRODUCTS, 
   INITIAL_CATEGORIES, 
   INITIAL_SETTINGS, 
   INITIAL_COUPONS,
-  INITIAL_BOT_RULES
+  INITIAL_BOT_RULES,
+  INITIAL_SLIDES
 } from '../data/initialData';
 
 interface StoreContextType {
+  theme: ThemeMode;
+  toggleTheme: () => void;
+  language: Language;
+  setLanguage: (lang: Language) => void;
   products: Product[];
   categories: Category[];
+  slides: HeroSlide[];
   cart: CartItem[];
   orders: Order[];
   settings: StoreSettings;
@@ -28,6 +38,10 @@ interface StoreContextType {
   appliedCoupon: Coupon | null;
   chatMessages: ChatMessage[];
   botRules: BotKnowledgeRule[];
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (open: boolean) => void;
   selectedCategory: string;
   setSelectedCategory: (cat: string) => void;
   searchQuery: string;
@@ -47,6 +61,10 @@ interface StoreContextType {
   setIsChatOpen: (open: boolean) => void;
   activePolicyModal: 'return' | 'shipping' | 'privacy' | null;
   setActivePolicyModal: (policy: 'return' | 'shipping' | 'privacy' | null) => void;
+  activeInvoiceOrder: Order | null;
+  setActiveInvoiceOrder: (order: Order | null) => void;
+  saveFeedbackToast: boolean;
+  triggerSaveFeedback: () => void;
   addToCart: (product: Product, quantity?: number, size?: string, color?: string) => void;
   removeFromCart: (index: number) => void;
   updateCartQuantity: (index: number, quantity: number) => void;
@@ -60,6 +78,11 @@ interface StoreContextType {
   updateBotRule: (id: string, rule: Partial<BotKnowledgeRule>) => void;
   deleteBotRule: (id: string) => void;
   toggleBotRule: (id: string) => void;
+  addSlide: (slide: Omit<HeroSlide, 'id'>) => void;
+  updateSlide: (id: string, slide: Partial<HeroSlide>) => void;
+  deleteSlide: (id: string) => void;
+  addCategory: (category: Category) => void;
+  deleteCategory: (id: string) => void;
   createOrder: (orderInfo: {
     customerName: string;
     phone: string;
@@ -86,14 +109,33 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Theme state (Dark/Light like Dream 2000)
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    return (localStorage.getItem('mortafaat_theme') as ThemeMode) || 'light';
+  });
+
+  // Language state (Arabic with Egypt Flag / English with US Flag)
+  const [language, setLanguage] = useState<Language>(() => {
+    return (localStorage.getItem('mortafaat_lang') as Language) || 'ar';
+  });
+
   // Products
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('mortafaat_products');
+    const saved = localStorage.getItem('mortafaat_products_v2');
     return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
   });
 
-  // Categories
-  const [categories] = useState<Category[]>(INITIAL_CATEGORIES);
+  // Dynamic Categories
+  const [categories, setCategories] = useState<Category[]>(() => {
+    const saved = localStorage.getItem('mortafaat_categories');
+    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+  });
+
+  // Hero Slides
+  const [slides, setSlides] = useState<HeroSlide[]>(() => {
+    const saved = localStorage.getItem('mortafaat_slides');
+    return saved ? JSON.parse(saved) : INITIAL_SLIDES;
+  });
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -101,7 +143,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Orders (Reset to COD default)
+  // Orders
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('mortafaat_orders');
     return saved ? JSON.parse(saved) : [
@@ -134,11 +176,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         ...INITIAL_SETTINGS, 
         ...parsed, 
         phone: '01067906474', 
-        whatsapp: '201067906474'
+        whatsapp: '201067906474',
+        sliderIntervalSeconds: parsed.sliderIntervalSeconds || 5
       };
     }
     return INITIAL_SETTINGS;
   });
+
+  // User Auth State
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('mortafaat_current_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Coupons
   const [coupons, setCoupons] = useState<Coupon[]>(() => {
@@ -177,11 +227,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [activePolicyModal, setActivePolicyModal] = useState<'return' | 'shipping' | 'privacy' | null>(null);
+  const [activeInvoiceOrder, setActiveInvoiceOrder] = useState<Order | null>(null);
+  const [saveFeedbackToast, setSaveFeedbackToast] = useState(false);
+
+  // Handle Theme
+  useEffect(() => {
+    localStorage.setItem('mortafaat_theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  // Handle Language
+  useEffect(() => {
+    localStorage.setItem('mortafaat_lang', language);
+    document.documentElement.setAttribute('dir', language === 'ar' ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', language);
+  }, [language]);
 
   // Persistence
   useEffect(() => {
-    localStorage.setItem('mortafaat_products', JSON.stringify(products));
+    localStorage.setItem('mortafaat_products_v2', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('mortafaat_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('mortafaat_slides', JSON.stringify(slides));
+  }, [slides]);
 
   useEffect(() => {
     localStorage.setItem('mortafaat_cart', JSON.stringify(cart));
@@ -196,6 +277,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [settings]);
 
   useEffect(() => {
+    localStorage.setItem('mortafaat_current_user', JSON.stringify(currentUser));
+  }, [currentUser]);
+
+  useEffect(() => {
     localStorage.setItem('mortafaat_coupons', JSON.stringify(coupons));
   }, [coupons]);
 
@@ -206,6 +291,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('mortafaat_chat_messages', JSON.stringify(chatMessages));
   }, [chatMessages]);
+
+  const triggerSaveFeedback = () => {
+    setSaveFeedbackToast(true);
+    setTimeout(() => setSaveFeedbackToast(false), 2500);
+  };
 
   // Admin Auth
   const loginAdmin = (pin: string) => {
@@ -305,10 +395,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Bot Knowledge Operations
   const addBotRule = (rule: Omit<BotKnowledgeRule, 'id'>) => {
-    const newRule: BotKnowledgeRule = {
-      ...rule,
-      id: `rule-${Date.now()}`
-    };
+    const newRule: BotKnowledgeRule = { ...rule, id: `rule-${Date.now()}` };
     setBotRules(prev => [newRule, ...prev]);
   };
 
@@ -322,6 +409,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const toggleBotRule = (id: string) => {
     setBotRules(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
+  };
+
+  // Hero Slides Operations
+  const addSlide = (slide: Omit<HeroSlide, 'id'>) => {
+    const newSlide: HeroSlide = { ...slide, id: `slide-${Date.now()}` };
+    setSlides(prev => [...prev, newSlide]);
+  };
+
+  const updateSlide = (id: string, updated: Partial<HeroSlide>) => {
+    setSlides(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
+  };
+
+  const deleteSlide = (id: string) => {
+    setSlides(prev => prev.filter(s => s.id !== id));
+  };
+
+  // Categories Operations
+  const addCategory = (category: Category) => {
+    setCategories(prev => [...prev, category]);
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
   };
 
   // Orders
@@ -339,6 +449,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       customerName: orderInfo.customerName,
       phone: orderInfo.phone,
+      email: currentUser?.email,
       governorate: orderInfo.governorate,
       address: orderInfo.address,
       notes: orderInfo.notes,
@@ -387,6 +498,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
+    triggerSaveFeedback();
   };
 
   // Chat handling with Smart Trained Bot Logic
@@ -401,7 +513,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     setChatMessages(prev => [...prev, userMsg]);
 
-    // Check against Bot Knowledge Rules
     const lowerText = text.toLowerCase();
     const matchedRule = botRules.find(rule => 
       rule.isActive && rule.keywords.some(kw => lowerText.includes(kw.trim().toLowerCase()))
@@ -427,7 +538,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 800);
   };
 
-  // Admin direct reply from Admin Dashboard to customer
   const adminSendReply = (text: string) => {
     if (!text.trim()) return;
     const adminMsg: ChatMessage = {
@@ -446,8 +556,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoreContext.Provider
       value={{
+        theme,
+        toggleTheme,
+        language,
+        setLanguage,
         products,
         categories,
+        slides,
         cart,
         orders,
         settings,
@@ -455,6 +570,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         appliedCoupon,
         chatMessages,
         botRules,
+        currentUser,
+        setCurrentUser,
+        isAuthModalOpen,
+        setIsAuthModalOpen,
         selectedCategory,
         setSelectedCategory,
         searchQuery,
@@ -474,6 +593,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsChatOpen,
         activePolicyModal,
         setActivePolicyModal,
+        activeInvoiceOrder,
+        setActiveInvoiceOrder,
+        saveFeedbackToast,
+        triggerSaveFeedback,
         addToCart,
         removeFromCart,
         updateCartQuantity,
@@ -487,6 +610,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateBotRule,
         deleteBotRule,
         toggleBotRule,
+        addSlide,
+        updateSlide,
+        deleteSlide,
+        addCategory,
+        deleteCategory,
         createOrder,
         addProduct,
         updateProduct,

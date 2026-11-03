@@ -1,16 +1,29 @@
+export type ThemeMode = 'light' | 'dark';
+export type Language = 'ar' | 'en';
+
+export interface ProductReview {
+  id: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface Product {
   id: string;
   name: string;
   nameEn: string;
-  category: 'electronics' | 'fashion' | 'perfumes' | 'home' | 'personal-care';
+  category: string;
   price: number;
   originalPrice?: number;
   description: string;
   images: string[];
+  videoUrl?: string;
   inStock: boolean;
   stockCount: number;
-  rating: number;
+  rating: number; // 0 by default until real reviews exist
   reviewsCount: number;
+  reviews?: ProductReview[];
   features: string[];
   sizes?: string[];
   colors?: { name: string; hex: string }[];
@@ -20,12 +33,12 @@ export interface Product {
 }
 
 export interface Category {
-  id: 'electronics' | 'fashion' | 'perfumes' | 'home' | 'personal-care';
+  id: string;
   nameAr: string;
   nameEn: string;
   icon: string;
-  image: string;
-  itemCount: number;
+  image?: string;
+  itemCount?: number;
 }
 
 export interface CartItem {
@@ -49,6 +62,7 @@ export interface Order {
   id: string;
   customerName: string;
   phone: string;
+  email?: string;
   governorate: string;
   address: string;
   notes?: string;
@@ -64,6 +78,25 @@ export interface Order {
   gatewayName?: string;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  isVerified: boolean;
+}
+
+export interface HeroSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  tag: string;
+  ctaText: string;
+  targetCategory: string;
+  image: string;
+  bgGradient?: string;
 }
 
 export interface BotKnowledgeRule {
@@ -84,7 +117,10 @@ export interface StoreSettings {
   announcementText: string;
   adminPin: string;
 
-  // Dynamic Payment Gateway Configuration (For Kashier / Fawry / Paymob etc.)
+  // Hero Slider timing
+  sliderIntervalSeconds: number;
+
+  // Dynamic Payment Gateway Configuration
   isOnlinePaymentEnabled: boolean;
   onlineGatewayName: string;
   onlineGatewayLogoUrl: string;
@@ -94,7 +130,7 @@ export interface StoreSettings {
   onlineGatewayEnvironment: 'live' | 'test';
   onlineGatewayNotice: string;
 
-  // Store Policies (Required by Fawry / Kashier for account approval)
+  // Store Policies
   returnPolicyText: string;
   shippingPolicyText: string;
   privacyPolicyText: string;

@@ -1,4 +1,4 @@
-import { Product, Category, StoreSettings, Coupon, BotKnowledgeRule } from '../types';
+import { Product, Category, StoreSettings, Coupon, BotKnowledgeRule, HeroSlide } from '../types';
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
@@ -43,6 +43,36 @@ export const INITIAL_CATEGORIES: Category[] = [
   }
 ];
 
+export const INITIAL_SLIDES: HeroSlide[] = [
+  {
+    id: 'slide-1',
+    title: 'أناقة وفخامة تليق بك',
+    subtitle: 'تشكيلة الشتاء الفاخرة وعطور شموخ المرتفعات الملكية بأسعار حصرية',
+    tag: 'وصل حديثاً 2026',
+    ctaText: 'تسوق الأزياء والعطور',
+    targetCategory: 'fashion',
+    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'slide-2',
+    title: 'أقوى عروض الإلكترونيات والذكاء',
+    subtitle: 'سماعات عازلة للضوضاء، ساعات ذكية، وشواحن فائقة السرعة بخصم حتى 40%',
+    tag: 'تخفيضات كبرى',
+    ctaText: 'اكتشف الإلكترونيات',
+    targetCategory: 'electronics',
+    image: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=1200&q=80'
+  },
+  {
+    id: 'slide-3',
+    title: 'بيتك يستحق الأفضل دائماً',
+    subtitle: 'قلايات هوائية ذكية وأجهزة منزلية متطورة تجعل حياتك أسهل وأسرع',
+    tag: 'ضمان عامين كاملين',
+    ctaText: 'تسوق الأجهزة المنزلية',
+    targetCategory: 'home',
+    image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80'
+  }
+];
+
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: 'p-1',
@@ -54,12 +84,14 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: 'سماعات أذن لاسلكية بتقنية البلوتوث 5.3 مع خاصية إلغاء الضوضاء النشط (Active Noise Cancellation) وبطارية تدوم حتى 36 ساعة مع علبة الشحن. صوت نقي بيز عميق مع ميكروفون مدمج مزدوج للمكالمات الواضحة.',
     images: [
       'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1572536147248-ac59a8abfa4b?auto=format&fit=crop&w=800&q=80'
     ],
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-hands-holding-a-smartphone-with-earphones-42657-large.mp4',
     inStock: true,
     stockCount: 45,
-    rating: 4.9,
-    reviewsCount: 128,
+    rating: 0,
+    reviewsCount: 0,
     features: ['إلغاء الضوضاء الفعال ANC', 'بطارية 36 ساعة تشغيل', 'مقاومة لرذاذ الماء IPX5', 'شحن سريع عبر Type-C'],
     isFeatured: true,
     isDeal: true,
@@ -75,12 +107,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: 'ساعة ذكية بتصميم معدني فخم وشاشة AMOLED عالية السطوع تحت الشمس، تدعم إجراء واستقبال المكالمات، قياس نبضات القلب ونسبة الأكسجين وتتبع الأنشطة الرياضية مع سوار إضافي هدية.',
     images: [
       'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'
     ],
     inStock: true,
     stockCount: 28,
-    rating: 4.8,
-    reviewsCount: 94,
+    rating: 0,
+    reviewsCount: 0,
     features: ['إجراء واستقبال المكالمات Bluetooth', 'شاشة AMOLED Always-on', 'بطارية تدوم 7 أيام', 'مقاومة الماء بالكامل'],
     isFeatured: true,
     isDeal: true,
@@ -96,12 +129,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: 'هودي شتوي ميلتون ثقيل مبطن بوبرة داخلية ناعمة لتدفئة فائقة، خامات قطنية مصرية 100% عالية الجودة لا تنكمش مع الغسيل بتطريز أنيق يحمل روح مرتفعات ستور.',
     images: [
       'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?auto=format&fit=crop&w=800&q=80'
     ],
     inStock: true,
     stockCount: 60,
-    rating: 4.9,
-    reviewsCount: 156,
+    rating: 0,
+    reviewsCount: 0,
     features: ['قطن مصري 100% مبطن', 'قصة Oversized عصرية', 'جيوب كانغارو مريحة', 'ألوان ثابتة تماماً'],
     sizes: ['M', 'L', 'XL', '2XL'],
     colors: [
@@ -120,12 +154,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     originalPrice: 1600,
     description: 'جاكيت شتوي أنيق بتقنية العزل الحراري ومقاومة المياه والرياح، مزود بغطاء رأس قابل للفك وسوست متينة مستوردة مع جيوب جانبية دافئة.',
     images: [
-      'https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1548883354-7622d03aca27?auto=format&fit=crop&w=800&q=80'
     ],
     inStock: true,
     stockCount: 18,
-    rating: 4.7,
-    reviewsCount: 42,
+    rating: 0,
+    reviewsCount: 0,
     features: ['مقاوم للأمطار والرياح Waterproof', 'حشوة فايبر حراري خفيف الوزن', 'سحابات YKK متينة', 'كابيشون قابل للفصل'],
     sizes: ['L', 'XL', '2XL', '3XL'],
     isFeatured: false
@@ -140,12 +175,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     description: 'توليفة عطرية ملكية خاصة بمرتفعات ستور تجمع بين نفحات العود الملكي، العنبر الدافئ، والتوابل الشرقية مع لمسة انتعاش البرغموت. ثبات وفوحان استثنائي يدوم لأكثر من 24 ساعة.',
     images: [
       'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=800&q=80',
-      'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1523293182086-7651a899d37f?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?auto=format&fit=crop&w=800&q=80'
     ],
     inStock: true,
     stockCount: 35,
-    rating: 5.0,
-    reviewsCount: 210,
+    rating: 0,
+    reviewsCount: 0,
     features: ['ثبات مضمون لأكثر من 24 ساعة', 'مكونات زيوت فرنسية نقية', 'زجاجة كرستالية أنيقة 100 مل', 'مناسب لجميع المناسبات'],
     isFeatured: true,
     isDeal: true,
@@ -160,12 +196,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     originalPrice: 3500,
     description: 'قلاية هوائية عائلية كبيرة شاشة لمس ديجيتال بـ 8 برامج طهي ذكية مسبقة الإعداد، تقلي وتشوي وتخبز بدهون أقل بنسبة 85% مع طلاء غير لاصق وسهلة التنظيف بغسالة الأطباق.',
     images: [
-      'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80'
     ],
     inStock: true,
     stockCount: 15,
-    rating: 4.8,
-    reviewsCount: 77,
+    rating: 0,
+    reviewsCount: 0,
     features: ['سعة عائلية ضخمة 6.5 لتر', 'شاشة لمس LED مع 8 برامج', 'قلي صحي بدون دهون', 'ضمان عامين كاملين'],
     isFeatured: true
   },
@@ -178,12 +215,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     originalPrice: 950,
     description: 'طقم متكامل للعناية الشخصية للرجال يضم شفرات ستانلس ستيل حادة ذاتية الشحذ، رؤوس لتشذيب الذقن وشعر الأنف والأذن، بطارية ليثيوم تدوم 90 دقيقة وشاشة لعرض نسبة الشحن.',
     images: [
-      'https://images.unsplash.com/photo-1621607512214-68297480165e?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1621607512214-68297480165e?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80'
     ],
     inStock: true,
     stockCount: 50,
-    rating: 4.9,
-    reviewsCount: 112,
+    rating: 0,
+    reviewsCount: 0,
     features: ['7 رؤوس تبديل مختلفة', 'شفرات ستانلس ستيل ذاتية الشحذ', 'شاشة رقمية لنسبة البطارية', 'مقاومة للماء وسهلة الغسيل'],
     isFeatured: true,
     isDeal: true,
@@ -198,12 +236,13 @@ export const INITIAL_PRODUCTS: Product[] = [
     originalPrice: 850,
     description: 'فرشاة فرد الشعر الاحترافية بألواح سيراميك تورمالين توزع الحرارة بتساوٍ لحماية بصيلات الشعر وتوليد ملايين الأيونات السالبة لمنع الهيشان والحصول على شعر حريري في دقائق.',
     images: [
-      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80'
+      'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80',
+      'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80'
     ],
     inStock: true,
     stockCount: 30,
-    rating: 4.8,
-    reviewsCount: 65,
+    rating: 0,
+    reviewsCount: 0,
     features: ['تسخين فوري خلال 30 ثانية', 'درجات حرارة قابلة للتعديل', 'تقنية الأيونات ضد الهيشان', 'سلك دوار 360 درجة'],
     isFeatured: false
   }
@@ -218,6 +257,7 @@ export const INITIAL_SETTINGS: StoreSettings = {
   freeShippingThreshold: 1000,
   announcementText: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + دفع عند الاستلام مع المعاينة قبل الدفع! 🔥',
   adminPin: '1234',
+  sliderIntervalSeconds: 5,
 
   // Dynamic Gateway (Disabled by default until merchant gets approved by Fawry or Kashier)
   isOnlinePaymentEnabled: false,
@@ -229,7 +269,7 @@ export const INITIAL_SETTINGS: StoreSettings = {
   onlineGatewayEnvironment: 'live',
   onlineGatewayNotice: 'الدفع الإلكتروني عبر بوابة الدفع المعتمدة (سيتم تفعيلها فور صدور موافقة البنك).',
 
-  // Policies (Vital for payment gateway approval)
+  // Policies
   returnPolicyText: 'يحق للعميل استبدال أو استرجاع المنتج خلال 14 يوماً من تاريخ الاستلام بشرط أن يكون المنتج بحالته الأصلية وفي غلافه، مع إمكانية فحص ومعاينة المنتج قبل الاستلام والدفع للمندوب.',
   shippingPolicyText: 'يتم شحن وتوصيل الطلبات خلال 24 إلى 48 ساعة لمحافظات القاهرة والجيزة والإسكندرية، وخلال 3 إلى 4 أيام لباقي محافظات الجمهورية مع شركة شحن متخصصة.',
   privacyPolicyText: 'نلتزم في مرتفعات ستور بحماية خصوصية عملائنا ولا نشارك أي بيانات شخصية أو عناوين مع أي جهة خارجية إلا لغرض توصيل الشحنة فقط.'

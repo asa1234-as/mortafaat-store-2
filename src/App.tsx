@@ -9,11 +9,13 @@ import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { PolicyModal } from './components/PolicyModal';
+import { AuthModal } from './components/AuthModal';
+import { InvoiceModal } from './components/InvoiceModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 
 export const AppContent: React.FC = () => {
-  const { currentView } = useStore();
+  const { currentView, activeInvoiceOrder, setActiveInvoiceOrder } = useStore();
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-gray-900 selection:bg-brand-gold selection:text-black">
@@ -39,6 +41,11 @@ export const AppContent: React.FC = () => {
       <CheckoutModal />
       <LiveChatWidget />
       <PolicyModal />
+      <AuthModal />
+      <InvoiceModal 
+        order={activeInvoiceOrder} 
+        onClose={() => setActiveInvoiceOrder(null)} 
+      />
     </div>
   );
 };
