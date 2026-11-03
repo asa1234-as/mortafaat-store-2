@@ -10,14 +10,16 @@ export const CartDrawer: React.FC = () => {
     removeFromCart, 
     updateCartQuantity, 
     cartSubtotal,
+    discountAmount,
+    cartFinalTotal,
+    appliedCoupon,
     settings,
     setIsCheckoutOpen
   } = useStore();
 
   if (!isCartOpen) return null;
 
-  const shipping = cartSubtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee;
-  const grandTotal = cartSubtotal + shipping;
+  const shipping = cartSubtotal >= settings.freeShippingThreshold || cartSubtotal === 0 ? 0 : settings.shippingFee;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs flex justify-end">
@@ -142,6 +144,12 @@ export const CartDrawer: React.FC = () => {
                 <span>قيمة المنتجات:</span>
                 <span className="font-bold text-gray-900">{cartSubtotal.toLocaleString()} ج.م</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-bold">
+                  <span>خصم الكوبون ({appliedCoupon?.code}):</span>
+                  <span>- {discountAmount.toLocaleString()} ج.م</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-600">
                 <span>مصاريف الشحن والتوصيل:</span>
                 <span className="font-bold text-emerald-600">
@@ -150,7 +158,7 @@ export const CartDrawer: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm font-black text-brand-black pt-2 border-t border-gray-200">
                 <span>الإجمالي النهائي:</span>
-                <span className="text-base text-brand-goldDark">{grandTotal.toLocaleString()} ج.م</span>
+                <span className="text-base text-brand-goldDark">{cartFinalTotal.toLocaleString()} ج.م</span>
               </div>
             </div>
 

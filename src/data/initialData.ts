@@ -1,4 +1,4 @@
-import { Product, Category, StoreSettings } from '../types';
+import { Product, Category, StoreSettings, Coupon } from '../types';
 
 export const INITIAL_CATEGORIES: Category[] = [
   {
@@ -212,11 +212,44 @@ export const INITIAL_PRODUCTS: Product[] = [
 export const INITIAL_SETTINGS: StoreSettings = {
   storeNameAr: 'مرتفعات ستور',
   storeNameEn: 'Mortafaat Store',
-  phone: '01099887766',
-  whatsapp: '201099887766',
-  vodafoneCashNumber: '01099887766',
-  instaPayUsername: 'mortafaat@instapay',
+  phone: '01067906474',
+  whatsapp: '201067906474',
+  vodafoneCashNumber: '01067906474',
+  instaPayUsername: '01067906474',
   shippingFee: 50,
   freeShippingThreshold: 1000,
-  announcementText: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + هدايا مع أول 100 طلب! 🔥'
+  announcementText: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + دفع آمن بالفيزا وباي موب وفودافون كاش! 🔥',
+  
+  // Paymob Settings
+  isPaymobCardEnabled: true,
+  paymobApiKey: '',
+  paymobCardIntegrationId: '',
+  paymobWalletIntegrationId: '',
+  paymobIframeId: '',
+  paymobHmacSecret: '',
+  paymobEnvironment: 'live',
+
+  // Bank Account Settings
+  bankName: 'البنك الأهلي المصري (NBE)',
+  bankAccountHolder: 'مرتفعات ستور - Mortafaat Store',
+  bankAccountNumber: '12345678901234',
+  bankIban: 'EG120002000100000012345678901',
+  bankSwiftCode: 'NBEGEGCX'
 };
+
+export const INITIAL_COUPONS: Coupon[] = [
+  {
+    code: 'MORTAFAAT10',
+    discountType: 'percentage',
+    discountValue: 10,
+    minOrderValue: 500,
+    isActive: true
+  },
+  {
+    code: 'WELCOME50',
+    discountType: 'fixed',
+    discountValue: 50,
+    minOrderValue: 300,
+    isActive: true
+  }
+];

@@ -35,7 +35,15 @@ export interface CartItem {
   selectedColor?: string;
 }
 
-export type PaymentMethod = 'cod' | 'vodafone-cash' | 'instapay';
+export type PaymentMethod = 'cod' | 'vodafone-cash' | 'instapay' | 'paymob-card' | 'bank-transfer';
+
+export interface Coupon {
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  minOrderValue?: number;
+  isActive: boolean;
+}
 
 export interface Order {
   id: string;
@@ -46,9 +54,13 @@ export interface Order {
   notes?: string;
   items: CartItem[];
   subtotal: number;
+  discountAmount?: number;
+  couponCode?: string;
   shippingFee: number;
   total: number;
   paymentMethod: PaymentMethod;
+  paymentStatus: 'paid' | 'unpaid' | 'pending_verification';
+  transactionId?: string;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: string;
 }
@@ -63,6 +75,22 @@ export interface StoreSettings {
   shippingFee: number;
   freeShippingThreshold: number;
   announcementText: string;
+  
+  // Paymob & Bank Integration Details
+  isPaymobCardEnabled: boolean;
+  paymobApiKey: string;
+  paymobCardIntegrationId: string;
+  paymobWalletIntegrationId: string;
+  paymobIframeId: string;
+  paymobHmacSecret: string;
+  paymobEnvironment: 'live' | 'test';
+
+  // Bank Account Details
+  bankName: string;
+  bankAccountHolder: string;
+  bankAccountNumber: string;
+  bankIban: string;
+  bankSwiftCode: string;
 }
 
 export interface ChatMessage {
