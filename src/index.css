@@ -7,6 +7,17 @@
     @apply bg-[#FDFBF7] text-gray-900 font-cairo antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
+  /* Dark mode body */
+  .dark body,
+  html.dark body {
+    @apply bg-[#07090E] text-gray-100;
+  }
+
+  html.dark {
+    background-color: #07090E;
+    color-scheme: dark;
+  }
 }
 
 /* Custom Scrollbar */
@@ -17,6 +28,10 @@
 
 ::-webkit-scrollbar-track {
   background: #F1EFEA;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #161B26;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -41,4 +56,34 @@
 
 .bg-dark-gradient {
   background: linear-gradient(135deg, #161B26 0%, #0A0D14 100%);
+}
+
+/* Print styles for invoice */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #printable-invoice, #printable-invoice * {
+    visibility: visible !important;
+  }
+  #printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 20px;
+    background: white !important;
+    color: black !important;
+  }
+  #printable-invoice img {
+    filter: grayscale(1) contrast(2) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #printable-invoice canvas,
+  #printable-invoice svg {
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

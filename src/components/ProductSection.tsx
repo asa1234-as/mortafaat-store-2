@@ -4,18 +4,22 @@ import { ProductCard } from './ProductCard';
 import { Filter, SlidersHorizontal, PackageX } from 'lucide-react';
 
 export const ProductSection: React.FC = () => {
-  const { products, selectedCategory, searchQuery, setSelectedCategory, setSearchQuery } = useStore();
+  const { products, categories, selectedCategory, searchQuery, setSelectedCategory, setSearchQuery, language } = useStore();
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
   const [onlyInStock, setOnlyInStock] = useState(false);
 
   // Filter products
   const filteredProducts = products.filter((p) => {
     const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+    const query = searchQuery.trim().toLowerCase();
     const matchesSearch = 
-      !searchQuery.trim() ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase());
+      !query ||
+      p.name.toLowerCase().includes(query) ||
+      (p.nameEn && p.nameEn.toLowerCase().includes(query)) ||
+      p.description.toLowerCase().includes(query) ||
+      p.category.toLowerCase().includes(query) ||
+      p.id.toLowerCase().includes(query) ||
+      (p.features && p.features.some(f => f.toLowerCase().includes(query)));
     const matchesStock = !onlyInStock || p.inStock;
     return matchesCategory && matchesSearch && matchesStock;
   });
@@ -29,14 +33,14 @@ export const ProductSection: React.FC = () => {
   });
 
   const getCategoryTitle = () => {
-    switch (selectedCategory) {
-      case 'electronics': return 'الإلكترونيات والذكاء';
-      case 'fashion': return 'الملابس والأزياء';
-      case 'perfumes': return 'العطور الفاخرة';
-      case 'home': return 'الأدوات والأجهزة المنزلية';
-      case 'personal-care': return 'العناية والأدوات الشخصية';
-      default: return 'جميع المنتجات المتوفرة';
+    if (selectedCategory === 'all') {
+      return language === 'ar' ? 'جميع المنتجات المتوفرة' : 'All Available Products';
     }
+    const cat = categories.find(c => c.id === selectedCategory);
+    if (cat) {
+      return language === 'ar' ? cat.nameAr : cat.nameEn;
+    }
+    return selectedCategory;
   };
 
   return (
@@ -50,7 +54,9 @@ export const ProductSection: React.FC = () => {
             {getCategoryTitle()}
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            عرض {sortedProducts.length} من أصل {products.length} منتج في مرتفعات ستور
+            {language === 'ar' 
+              ? `عرض ${sortedProducts.length} من أصل ${products.length} منتج في مرتفعات ستور`
+              : `Showing ${sortedProducts.length} of ${products.length} products in Mortafaat Store`}
           </p>
         </div>
 

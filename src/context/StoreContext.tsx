@@ -82,6 +82,7 @@ interface StoreContextType {
   updateSlide: (id: string, slide: Partial<HeroSlide>) => void;
   deleteSlide: (id: string) => void;
   addCategory: (category: Category) => void;
+  updateCategory: (id: string, updated: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
   createOrder: (orderInfo: {
     customerName: string;
@@ -430,6 +431,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCategories(prev => [...prev, category]);
   };
 
+  const updateCategory = (id: string, updated: Partial<Category>) => {
+    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
+  };
+
   const deleteCategory = (id: string) => {
     setCategories(prev => prev.filter(c => c.id !== id));
   };
@@ -501,7 +506,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     triggerSaveFeedback();
   };
 
-  // Chat handling with Smart Trained Bot Logic
+  // Chat handling with Smart Trained Bot Logic (Improved: remembers context)
   const sendChatMessage = (text: string) => {
     if (!text.trim()) return;
     const userMsg: ChatMessage = {
@@ -514,16 +519,44 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setChatMessages(prev => [...prev, userMsg]);
 
     const lowerText = text.toLowerCase();
-    const matchedRule = botRules.find(rule => 
+    
+    // Find all matching rules
+    const matchedRules = botRules.filter(rule => 
       rule.isActive && rule.keywords.some(kw => lowerText.includes(kw.trim().toLowerCase()))
     );
 
     setTimeout(() => {
       let replyText = '';
-      if (matchedRule) {
-        replyText = matchedRule.replyText;
+      
+      if (matchedRules.length > 0) {
+        // Check which rules were already used in recent messages
+        const recentBotReplies = chatMessages
+          .filter(m => m.sender === 'bot')
+          .slice(-5)
+          .map(m => m.text);
+        
+        // Try to find a rule that hasn't been used recently
+        const unusedRule = matchedRules.find(rule => !recentBotReplies.includes(rule.replyText));
+        
+        if (unusedRule) {
+          replyText = unusedRule.replyText;
+        } else {
+          // All matching rules were used recently - give a follow-up response
+          const followUpResponses = [
+            `أعتقد إنني جاوبت على استفسار مشابه قبل كده! لو محتاج تفاصيل أكتر أو عندك سؤال مختلف، اكتبه وأنا هنا. أو تقدر تتواصل مباشرة مع الإدارة على واتساب المتجر: ${settings.phone} 😊`,
+            `لو محتاج معلومات إضافية غير اللي قلتها، تقدر تسأل سؤال تاني وأنا هحاول أساعدك! أو تكلم خدمة العملاء مباشرة على ${settings.phone} 📞`,
+            `شكراً لاهتمامك! لو في حاجة تانية مختلفة عايز تعرفها، اسألني. أو ابعتلنا رسالة على واتساب ${settings.phone} وفريق الإدارة هيرد عليك فوراً 🙌`
+          ];
+          replyText = followUpResponses[Math.floor(Math.random() * followUpResponses.length)];
+        }
       } else {
-        replyText = `شكراً لتواصلك مع مرتفعات ستور! تم إشعار فريق خدمة العملاء باستفسارك وسنقوم بالرد عليك هنا فوراً، أو يمكنك مراسلتنا مباشرة على واتساب المتجر: 01067906474.`;
+        // No rules matched at all
+        const genericResponses = [
+          `شكراً لتواصلك مع مرتفعات ستور! تم إشعار فريق خدمة العملاء باستفسارك وسنقوم بالرد عليك هنا فوراً، أو يمكنك مراسلتنا مباشرة على واتساب المتجر: ${settings.phone}.`,
+          `أهلاً بيك! استفسارك مهم لينا وتم تحويله لفريق الدعم. ممكن كمان تتواصل معانا على واتساب: ${settings.phone} للرد السريع 💬`,
+          `مرحباً! للأسف مش متأكد من إجابة سؤالك ده، بس فريق خدمة العملاء هيرد عليك هنا قريب. أو كلمنا على ${settings.phone} 📱`
+        ];
+        replyText = genericResponses[Math.floor(Math.random() * genericResponses.length)];
       }
 
       const botMsg: ChatMessage = {
@@ -614,6 +647,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateSlide,
         deleteSlide,
         addCategory,
+        updateCategory,
         deleteCategory,
         createOrder,
         addProduct,

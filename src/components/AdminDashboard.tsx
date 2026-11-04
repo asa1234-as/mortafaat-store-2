@@ -29,7 +29,10 @@ import {
   LayoutTemplate,
   CheckCircle2,
   Image as ImageIcon,
-  Timer
+  Timer,
+  ChevronDown,
+  ChevronUp,
+  Video
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -54,8 +57,10 @@ export const AdminDashboard: React.FC = () => {
     deleteBotRule,
     toggleBotRule,
     addSlide,
+    updateSlide,
     deleteSlide,
     addCategory,
+    updateCategory,
     deleteCategory,
     adminSendReply,
     setCurrentView,
@@ -63,8 +68,7 @@ export const AdminDashboard: React.FC = () => {
     triggerSaveFeedback
   } = useStore();
 
-  // START ON OVERVIEW HOME (As requested: "مش عاوز نلاقيه موجهني مباشر لقسم المنتجات")
-  const [activeTab, setActiveTab] = useState<'overview' | 'slides' | 'categories' | 'products' | 'orders' | 'live-chat' | 'bot-training' | 'gateway' | 'coupons' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'slides' | 'categories' | 'products' | 'orders' | 'live-chat' | 'bot-training' | 'coupons' | 'settings'>('overview');
 
   // Product Add/Edit Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -83,22 +87,27 @@ export const AdminDashboard: React.FC = () => {
   const [prodVideoUrl, setProdVideoUrl] = useState('');
   const [prodFeatures, setProdFeatures] = useState('');
 
-  // Slide Form State
-  const [newSlideTitle, setNewSlideTitle] = useState('');
-  const [newSlideSubtitle, setNewSlideSubtitle] = useState('');
-  const [newSlideTag, setNewSlideTag] = useState('');
-  const [newSlideCta, setNewSlideCta] = useState('تسوق الآن');
-  const [newSlideImage, setNewSlideImage] = useState('');
-  const [newSlideCategory, setNewSlideCategory] = useState('all');
+  // Slide Form State (Add / Edit)
+  const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
+  const [slideTitle, setSlideTitle] = useState('');
+  const [slideSubtitle, setSlideSubtitle] = useState('');
+  const [slideTag, setSlideTag] = useState('');
+  const [slideCta, setSlideCta] = useState('تسوق الآن');
+  const [slideImage, setSlideImage] = useState('');
+  const [slideCategory, setSlideCategory] = useState('all');
 
-  // Category Form State
+  // Category Edit State
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editCatNameAr, setEditCatNameAr] = useState('');
+  const [editCatNameEn, setEditCatNameEn] = useState('');
   const [newCatNameAr, setNewCatNameAr] = useState('');
   const [newCatNameEn, setNewCatNameEn] = useState('');
   const [newCatId, setNewCatId] = useState('');
 
-  // Orders Filter
+  // Orders Filter & Expandable Details
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [orderSearch, setOrderSearch] = useState<string>('');
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   // Settings State Form
   const [tempSettings, setTempSettings] = useState<StoreSettings>({ ...settings });
@@ -165,6 +174,32 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setProdVideoUrl(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSlideImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setSlideImage(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
     const featuresList = prodFeatures.split('\n').map(f => f.trim()).filter(Boolean);
@@ -204,34 +239,61 @@ export const AdminDashboard: React.FC = () => {
     }
 
     setIsAddModalOpen(false);
+    triggerSaveFeedback();
   };
 
-  // ANIMATED SAVE WITH TOAST NOTIFICATION
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
       updateSettings(tempSettings);
-    }, 400);
+    }, 300);
   };
 
-  const handleAddSlide = (e: React.FormEvent) => {
+  const handleSaveSlide = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSlideTitle || !newSlideImage) return;
-    addSlide({
-      title: newSlideTitle,
-      subtitle: newSlideSubtitle,
-      tag: newSlideTag || 'عرض خاص',
-      ctaText: newSlideCta || 'تسوق الآن',
-      targetCategory: newSlideCategory || 'all',
-      image: newSlideImage
-    });
-    setNewSlideTitle('');
-    setNewSlideSubtitle('');
-    setNewSlideTag('');
-    setNewSlideImage('');
+    if (!slideTitle || !slideImage) {
+      alert('يرجى كتابة عنوان البانر واختيار صورة');
+      return;
+    }
+
+    if (editingSlide) {
+      updateSlide(editingSlide.id, {
+        title: slideTitle,
+        subtitle: slideSubtitle,
+        tag: slideTag || 'عرض خاص',
+        ctaText: slideCta || 'تسوق الآن',
+        targetCategory: slideCategory || 'all',
+        image: slideImage
+      });
+      setEditingSlide(null);
+    } else {
+      addSlide({
+        title: slideTitle,
+        subtitle: slideSubtitle,
+        tag: slideTag || 'عرض خاص',
+        ctaText: slideCta || 'تسوق الآن',
+        targetCategory: slideCategory || 'all',
+        image: slideImage
+      });
+    }
+
+    setSlideTitle('');
+    setSlideSubtitle('');
+    setSlideTag('');
+    setSlideImage('');
     triggerSaveFeedback();
+  };
+
+  const handleEditSlideClick = (slide: HeroSlide) => {
+    setEditingSlide(slide);
+    setSlideTitle(slide.title);
+    setSlideSubtitle(slide.subtitle);
+    setSlideTag(slide.tag);
+    setSlideCta(slide.ctaText);
+    setSlideImage(slide.image);
+    setSlideCategory(slide.targetCategory || 'all');
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -248,6 +310,17 @@ export const AdminDashboard: React.FC = () => {
     setNewCatNameAr('');
     setNewCatNameEn('');
     setNewCatId('');
+    triggerSaveFeedback();
+  };
+
+  const handleUpdateCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory || !editCatNameAr) return;
+    updateCategory(editingCategory.id, {
+      nameAr: editCatNameAr,
+      nameEn: editCatNameEn || editCatNameAr
+    });
+    setEditingCategory(null);
     triggerSaveFeedback();
   };
 
@@ -288,7 +361,6 @@ export const AdminDashboard: React.FC = () => {
     triggerSaveFeedback();
   };
 
-  // Export orders to CSV
   const exportOrdersCSV = () => {
     const headers = 'رقم الطلب,اسم العميل,رقم الهاتف,المحافظة,العنوان,طريقة الدفع,حالة الدفع,حالة الطلب,الإجمالي,التاريخ\n';
     const rows = orders.map(o => 
@@ -332,7 +404,7 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'overview' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'overview' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <LayoutTemplate className="w-4 h-4 text-brand-goldDark" />
@@ -342,27 +414,27 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('slides')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'slides' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'slides' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <ImageIcon className="w-4 h-4 text-brand-goldDark" />
-            <span>صور وإعلانات الواجهة ({slides.length})</span>
+            <span>البانرات والسلايدر ({slides.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('categories')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'categories' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'categories' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <Layers className="w-4 h-4 text-brand-goldDark" />
-            <span>إدارة الأقسام ({categories.length})</span>
+            <span>تعديل وإضافة الأقسام ({categories.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('products')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'products' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'products' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <Package className="w-4 h-4 text-brand-goldDark" />
@@ -372,11 +444,11 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('orders')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'orders' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'orders' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <ShoppingCart className="w-4 h-4 text-brand-goldDark" />
-            <span>الطلبات ({orders.length})</span>
+            <span>تفاصيل الطلبات ({orders.length})</span>
             {pendingOrders > 0 && (
               <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
                 {pendingOrders}
@@ -387,7 +459,7 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('live-chat')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'live-chat' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'live-chat' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <MessageSquare className="w-4 h-4 text-brand-goldDark" />
@@ -397,7 +469,7 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('bot-training')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'bot-training' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'bot-training' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <Bot className="w-4 h-4 text-brand-goldDark" />
@@ -407,7 +479,7 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('coupons')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'coupons' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'coupons' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <Tag className="w-4 h-4 text-brand-goldDark" />
@@ -417,11 +489,11 @@ export const AdminDashboard: React.FC = () => {
           <button
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'settings' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900'
+              activeTab === 'settings' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <SettingsIcon className="w-4 h-4 text-brand-goldDark" />
-            <span>إعدادات المتجر وسرعة السلايدر</span>
+            <span>إعدادات المتجر والسلايدر</span>
           </button>
         </div>
       </div>
@@ -429,17 +501,15 @@ export const AdminDashboard: React.FC = () => {
       {/* Main Tab Content */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
         
-        {/* TAB 1: EXECUTIVE OVERVIEW (الصفحة الرئيسية للإدارة) */}
+        {/* TAB 1: EXECUTIVE OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            
-            {/* Welcome Banner */}
             <div className="p-6 rounded-3xl bg-gradient-to-r from-zinc-950 via-brand-black to-zinc-900 text-white border border-brand-gold/30 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-brand-gold text-xs font-bold uppercase tracking-wider">مرحباً بك في لوحة تحكم</span>
                 <h2 className="text-2xl sm:text-3xl font-black mt-1">مرتفعات ستور (Mortafaat Store)</h2>
                 <p className="text-xs text-gray-400 mt-1 max-w-xl">
-                  لديك كامل الصلاحية للتحكم في صور السلايدر، مدة عرضها، إضافة أقسام جديدة، وتعديل كل كلمة في المتجر.
+                  تحكم كامل في صور السلايدر، المنتجات، الأسعار والخصومات، وتفاصيل الطلبات الواردة بصورها الحقيقية.
                 </p>
               </div>
 
@@ -453,7 +523,6 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick KPI Overview */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm">
                 <span className="text-xs text-gray-500">إجمالي المبيعات</span>
@@ -475,53 +544,10 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-xl font-black text-emerald-600 mt-1">{products.length} منتجات</p>
               </div>
             </div>
-
-            {/* Quick Launchpad Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div 
-                onClick={() => setActiveTab('slides')} 
-                className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-200 dark:border-zinc-800 hover:border-brand-gold cursor-pointer transition-all shadow-sm flex items-center gap-3"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-brand-goldDark flex items-center justify-center">
-                  <ImageIcon className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">تعديل صور وسلايدر الواجهة</h4>
-                  <p className="text-[11px] text-gray-500">تحكم بالصور، النصوص، وسرعة التبديل</p>
-                </div>
-              </div>
-
-              <div 
-                onClick={() => setActiveTab('categories')} 
-                className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-200 dark:border-zinc-800 hover:border-brand-gold cursor-pointer transition-all shadow-sm flex items-center gap-3"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
-                  <Layers className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">إضافة أقسام وفئات جديدة</h4>
-                  <p className="text-[11px] text-gray-500">توسيع المتجر بأي فئة تريدها</p>
-                </div>
-              </div>
-
-              <div 
-                onClick={() => setActiveTab('products')} 
-                className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-gray-200 dark:border-zinc-800 hover:border-brand-gold cursor-pointer transition-all shadow-sm flex items-center gap-3"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-                  <Plus className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">إضافة منتجات وتعديل الأسعار</h4>
-                  <p className="text-[11px] text-gray-500">رفع صور متعددة وفيديوهات</p>
-                </div>
-              </div>
-            </div>
-
           </div>
         )}
 
-        {/* TAB 2: HERO SLIDES & SLIDER SPEED CONTROL */}
+        {/* TAB 2: HERO SLIDES & SLIDER SPEED CONTROL (Upload from device + Edit existing) */}
         {activeTab === 'slides' && (
           <div className="space-y-6">
             
@@ -557,22 +583,38 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Add New Slide Form */}
+            {/* Add/Edit Slide Form */}
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
-              <h3 className="text-base font-black flex items-center gap-2">
-                <Plus className="w-4 h-4 text-brand-goldDark" />
-                <span>إضافة إعلان أو بانر جديد في أول المتجر</span>
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-brand-goldDark" />
+                  <span>{editingSlide ? `تعديل البانر: "${editingSlide.title}"` : 'إضافة بانر جديد في أول المتجر'}</span>
+                </h3>
+                {editingSlide && (
+                  <button
+                    onClick={() => {
+                      setEditingSlide(null);
+                      setSlideTitle('');
+                      setSlideSubtitle('');
+                      setSlideTag('');
+                      setSlideImage('');
+                    }}
+                    className="text-xs text-gray-500 hover:text-red-500 underline"
+                  >
+                    إلغاء التعديل
+                  </button>
+                )}
+              </div>
 
-              <form onSubmit={handleAddSlide} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <form onSubmit={handleSaveSlide} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
                   <label className="font-bold block mb-1">العنوان الرئيسي للبانر *</label>
                   <input
                     type="text"
                     required
                     placeholder="مثال: عروض الشتاء الكبرى"
-                    value={newSlideTitle}
-                    onChange={(e) => setNewSlideTitle(e.target.value)}
+                    value={slideTitle}
+                    onChange={(e) => setSlideTitle(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
                   />
                 </div>
@@ -582,20 +624,8 @@ export const AdminDashboard: React.FC = () => {
                   <input
                     type="text"
                     placeholder="مثال: خصومات حصرية حتى 50% على الملابس"
-                    value={newSlideSubtitle}
-                    onChange={(e) => setNewSlideSubtitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold block mb-1">رابط صورة البانر *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="https://images.unsplash.com/..."
-                    value={newSlideImage}
-                    onChange={(e) => setNewSlideImage(e.target.value)}
+                    value={slideSubtitle}
+                    onChange={(e) => setSlideSubtitle(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
                   />
                 </div>
@@ -605,21 +635,28 @@ export const AdminDashboard: React.FC = () => {
                   <input
                     type="text"
                     placeholder="مثال: وصل حديثاً 2026"
-                    value={newSlideTag}
-                    onChange={(e) => setNewSlideTag(e.target.value)}
+                    value={slideTag}
+                    onChange={(e) => setSlideTag(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
                   />
                 </div>
 
-                <div>
-                  <label className="font-bold block mb-1">نص زر الشراء</label>
-                  <input
-                    type="text"
-                    placeholder="تسوق الآن"
-                    value={newSlideCta}
-                    onChange={(e) => setNewSlideCta(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
-                  />
+                <div className="sm:col-span-2">
+                  <label className="font-bold block mb-1">صورة البانر (من الجهاز أو رابط ويب) *</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="رابط الصورة https://..."
+                      value={slideImage}
+                      onChange={(e) => setSlideImage(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                    <label className="px-4 py-2 rounded-xl bg-zinc-800 text-white font-bold cursor-pointer hover:bg-black transition-colors flex items-center gap-1.5 flex-shrink-0">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>رفع من جهازك</span>
+                      <input type="file" accept="image/*" onChange={handleSlideImageUpload} className="hidden" />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex items-end">
@@ -627,7 +664,7 @@ export const AdminDashboard: React.FC = () => {
                     type="submit"
                     className="w-full py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
                   >
-                    + إضافة هذا البانر للسلايدر
+                    {editingSlide ? '✓ حفظ تعديلات البانر' : '+ إضافة هذا البانر للسلايدر'}
                   </button>
                 </div>
               </form>
@@ -635,11 +672,11 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Current Slides List */}
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
-              <h3 className="text-base font-black">البانرات المعروضة حالياً في واجهة المتجر ({slides.length}):</h3>
+              <h3 className="text-base font-black">البانرات المعروضة حالياً ({slides.length}):</h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {slides.map((s, idx) => (
-                  <div key={s.id || idx} className="rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden bg-gray-50 dark:bg-zinc-800/60 flex flex-col justify-between">
+                {slides.map((s) => (
+                  <div key={s.id} className="rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden bg-gray-50 dark:bg-zinc-800/60 flex flex-col justify-between">
                     <div className="h-32 w-full overflow-hidden relative">
                       <img src={s.image} alt="" className="w-full h-full object-cover" />
                       <span className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
@@ -652,9 +689,23 @@ export const AdminDashboard: React.FC = () => {
                       <p className="text-gray-500 dark:text-gray-400 text-[11px] line-clamp-2">{s.subtitle}</p>
                     </div>
 
-                    <div className="p-2.5 border-t border-gray-200 dark:border-zinc-700 flex justify-end">
+                    <div className="p-2.5 border-t border-gray-200 dark:border-zinc-700 flex justify-between items-center">
                       <button
-                        onClick={() => deleteSlide(s.id)}
+                        onClick={() => handleEditSlideClick(s)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors flex items-center gap-1 font-bold text-[11px]"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                        <span>تعديل</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (slides.length <= 1) {
+                            alert('يجب أن يتبقى بانر واحد على الأقل في السلايدر');
+                            return;
+                          }
+                          deleteSlide(s.id);
+                        }}
                         className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
                         title="حذف هذا البانر"
                       >
@@ -669,7 +720,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: DYNAMIC CATEGORIES MANAGER */}
+        {/* TAB 3: DYNAMIC CATEGORIES MANAGER (With Edit Option) */}
         {activeTab === 'categories' && (
           <div className="space-y-6">
             
@@ -697,7 +748,7 @@ export const AdminDashboard: React.FC = () => {
                   <label className="font-bold block mb-1">اسم القسم بالإنجليزي</label>
                   <input
                     type="text"
-                    placeholder="Example: Watches & Accessories"
+                    placeholder="Watches & Accessories"
                     value={newCatNameEn}
                     onChange={(e) => setNewCatNameEn(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
@@ -726,7 +777,7 @@ export const AdminDashboard: React.FC = () => {
               </form>
             </div>
 
-            {/* Categories List */}
+            {/* Categories List (With Edit Trigger) */}
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
               <h3 className="text-base font-black">الأقسام المتوفرة حالياً في المتجر ({categories.length}):</h3>
 
@@ -743,23 +794,81 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        if (categories.length <= 1) {
-                          alert('يجب أن يتبقى قسم واحد على الأقل في المتجر!');
-                          return;
-                        }
-                        deleteCategory(cat.id);
-                      }}
-                      className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg"
-                      title="حذف هذا القسم"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingCategory(cat);
+                          setEditCatNameAr(cat.nameAr);
+                          setEditCatNameEn(cat.nameEn);
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
+                        title="تعديل اسم القسم"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (categories.length <= 1) {
+                            alert('يجب أن يتبقى قسم واحد على الأقل في المتجر!');
+                            return;
+                          }
+                          deleteCategory(cat.id);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition-colors"
+                        title="حذف هذا القسم"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Edit Category Modal */}
+            {editingCategory && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-brand-gold/40 space-y-4 text-xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-zinc-800">
+                    <h3 className="font-bold text-sm">تعديل اسم القسم: {editingCategory.nameAr}</h3>
+                    <button onClick={() => setEditingCategory(null)}>✕</button>
+                  </div>
+
+                  <form onSubmit={handleUpdateCategorySubmit} className="space-y-3">
+                    <div>
+                      <label className="font-bold block mb-1">الاسم بالعربي:</label>
+                      <input
+                        type="text"
+                        required
+                        value={editCatNameAr}
+                        onChange={(e) => setEditCatNameAr(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="font-bold block mb-1">الاسم بالإنجليزي:</label>
+                      <input
+                        type="text"
+                        value={editCatNameEn}
+                        onChange={(e) => setEditCatNameEn(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button type="submit" className="flex-1 py-2 bg-gold-gradient text-black font-extrabold rounded-xl shadow">
+                        حفظ التعديل
+                      </button>
+                      <button type="button" onClick={() => setEditingCategory(null)} className="px-4 py-2 bg-gray-100 dark:bg-zinc-800 rounded-xl">
+                        إلغاء
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
 
           </div>
         )}
@@ -770,7 +879,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <div>
                 <h3 className="text-base font-black">قائمة منتجات المتجر</h3>
-                <p className="text-xs text-gray-500">أضف صوراً وفيديوهات ومميزات لكل منتج</p>
+                <p className="text-xs text-gray-500">تحكم بالأسعار، نسب الخصومات، والصور والفيديو</p>
               </div>
 
               <button
@@ -788,71 +897,89 @@ export const AdminDashboard: React.FC = () => {
                   <tr>
                     <th className="py-3 px-3">المنتج</th>
                     <th className="py-3 px-3">القسم</th>
-                    <th className="py-3 px-3">السعر</th>
+                    <th className="py-3 px-3">السعر الحالي</th>
+                    <th className="py-3 px-3">السعر الأصلي / الخصم</th>
                     <th className="py-3 px-3">المخزون</th>
                     <th className="py-3 px-3 text-center">إجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
-                  {products.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50/80 dark:hover:bg-zinc-800/40 transition-colors">
-                      <td className="py-3 px-3 flex items-center gap-3">
-                        <img src={p.images[0]} alt="" className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0 border" />
-                        <div>
-                          <p className="font-bold line-clamp-1">{p.name}</p>
-                          <span className="text-[10px] text-gray-400 font-mono">صور: {p.images?.length || 1} {p.videoUrl ? '• مع فيديو' : ''}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-md text-[11px] font-semibold">
-                          {p.category}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-bold text-brand-goldDark">
-                        {p.price} ج.م
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          p.stockCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                        }`}>
-                          {p.stockCount > 0 ? `${p.stockCount} متوفر` : 'نفذت الكمية'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => openEditProduct(p)}
-                            className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`هل أنت متأكد من حذف المنتج: "${p.name}"؟`)) {
-                                deleteProduct(p.id);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {products.map((p) => {
+                    const discount = p.originalPrice ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100) : 0;
+                    return (
+                      <tr key={p.id} className="hover:bg-gray-50/80 dark:hover:bg-zinc-800/40 transition-colors">
+                        <td className="py-3 px-3 flex items-center gap-3">
+                          <img src={p.images[0]} alt="" className="w-10 h-10 rounded-lg object-cover bg-gray-100 flex-shrink-0 border" />
+                          <div>
+                            <p className="font-bold line-clamp-1">{p.name}</p>
+                            <span className="text-[10px] text-gray-400 font-mono">صور: {p.images?.length || 1} {p.videoUrl ? '• مع فيديو' : ''}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className="bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-md text-[11px] font-semibold">
+                            {p.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-bold text-brand-goldDark">
+                          {p.price} ج.م
+                        </td>
+                        <td className="py-3 px-3">
+                          {p.originalPrice ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="line-through text-gray-400">{p.originalPrice} ج.م</span>
+                              {discount > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                  -{discount}%
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            p.stockCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                          }`}>
+                            {p.stockCount > 0 ? `${p.stockCount} متوفر` : 'نفذت الكمية'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => openEditProduct(p)}
+                              className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`هل أنت متأكد من حذف المنتج: "${p.name}"؟`)) {
+                                  deleteProduct(p.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* TAB 5: ORDERS */}
+        {/* TAB 5: ORDERS (With Expandable Product Details & Real Images) */}
         {activeTab === 'orders' && (
           <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-4 sm:p-6 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-black">سجل الطلبات الواردة</h3>
-                <p className="text-xs text-gray-500">إدارة وشحن وتأكيد طلبات المشترين</p>
+                <p className="text-xs text-gray-500">اضغط على أي طلب لعرض المنتجات المطلوبة وصورها وأسعارها بالتفصيل</p>
               </div>
 
               <button
@@ -865,31 +992,87 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {filteredOrders.map((ord) => (
-                <div key={ord.id} className="p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/50 space-y-3">
-                  <div className="flex justify-between items-center border-b border-gray-200 dark:border-zinc-700 pb-2">
-                    <span className="font-mono font-black text-sm">#{ord.id} ({ord.createdAt})</span>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                      الدفع عند الاستلام
-                    </span>
+              {filteredOrders.map((ord) => {
+                const isExpanded = expandedOrderId === ord.id;
+                return (
+                  <div key={ord.id} className="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/50 overflow-hidden transition-all">
+                    
+                    {/* Header Row */}
+                    <div 
+                      onClick={() => setExpandedOrderId(isExpanded ? null : ord.id)}
+                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-gray-100/70 dark:hover:bg-zinc-800"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-brand-gold/20 text-brand-goldDark flex items-center justify-center font-bold text-xs">
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <span className="font-mono font-black text-sm block">#{ord.id}</span>
+                          <span className="text-[10px] text-gray-500">{ord.createdAt}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs">
+                        <div>
+                          <span className="text-gray-400 block text-[10px]">العميل:</span>
+                          <span className="font-bold">{ord.customerName}</span>
+                          <span className="text-gray-500 block font-mono text-[10px]">{ord.phone}</span>
+                        </div>
+
+                        <div>
+                          <span className="text-gray-400 block text-[10px]">الإجمالي:</span>
+                          <span className="font-black text-brand-goldDark">{ord.total} ج.م</span>
+                        </div>
+
+                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
+                          {ord.paymentMethod === 'cod' ? 'الدفع عند الاستلام' : 'دفع إلكتروني'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expandable Order Items List with REAL Images */}
+                    {isExpanded && (
+                      <div className="p-4 border-t border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 space-y-3 text-xs">
+                        <h4 className="font-bold text-gray-700 dark:text-gray-300">المنتجات المطلوبة في هذا الأوردر ({ord.items.length}):</h4>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {ord.items.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/40">
+                              <img 
+                                src={item.product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80'} 
+                                alt={item.product.name} 
+                                className="w-14 h-14 rounded-lg object-cover border" 
+                              />
+                              <div className="flex-1">
+                                <h5 className="font-bold line-clamp-1">{item.product.name}</h5>
+                                <div className="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
+                                  <span>الكمية: <b>{item.quantity}</b></span>
+                                  <span>السعر: <b>{item.product.price} ج.م</b></span>
+                                </div>
+                                {(item.selectedSize || item.selectedColor) && (
+                                  <span className="text-[10px] text-brand-goldDark block mt-0.5">
+                                    {item.selectedSize ? `المقاس: ${item.selectedSize} ` : ''}
+                                    {item.selectedColor ? `اللون: ${item.selectedColor}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-black text-sm text-black dark:text-white">
+                                {item.product.price * item.quantity} ج.م
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="p-3 bg-amber-50/50 dark:bg-zinc-800/60 rounded-xl border border-amber-200/60 dark:border-zinc-700 text-[11px] flex justify-between items-center">
+                          <span>عنوان التوصيل: <b>{ord.governorate} - {ord.address}</b></span>
+                          <span>مصاريف الشحن: <b>{ord.shippingFee === 0 ? 'مجاني' : `${ord.shippingFee} ج.م`}</b></span>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <span className="text-gray-400 block text-[10px]">العميل:</span>
-                      <p className="font-bold">{ord.customerName}</p>
-                      <p className="font-mono">{ord.phone}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block text-[10px]">العنوان:</span>
-                      <p>{ord.governorate} - {ord.address}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block text-[10px]">المبلغ:</span>
-                      <p className="font-black text-sm text-brand-goldDark">{ord.total} ج.م</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -938,7 +1121,7 @@ export const AdminDashboard: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="الكلمات المفتاحية مفصولة بفاصلة (مثال: هدية, قطعتين)"
+                  placeholder="الكلمات المفتاحية مفصولة بفاصلة (مثال: عروض تانية, هدية, خصم)"
                   value={newRuleKeywords}
                   onChange={(e) => setNewRuleKeywords(e.target.value)}
                   className="px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-900"
@@ -979,7 +1162,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 9: SETTINGS WITH ANIMATED FEEDBACK */}
+        {/* TAB 9: SETTINGS */}
         {activeTab === 'settings' && (
           <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-7 max-w-2xl space-y-5">
             <div>
@@ -1029,7 +1212,6 @@ export const AdminDashboard: React.FC = () => {
                 />
               </div>
 
-              {/* ANIMATED SAVE BUTTON */}
               <button
                 type="submit"
                 disabled={isSaving}
@@ -1053,7 +1235,7 @@ export const AdminDashboard: React.FC = () => {
 
       </div>
 
-      {/* ADD/EDIT PRODUCT MODAL (Supports Multi-images + Video) */}
+      {/* ADD/EDIT PRODUCT MODAL (Supports Multi-images + Video Upload or Link) */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-brand-gold/40 my-6 space-y-4 text-xs">
@@ -1091,14 +1273,44 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1">سعر البيع (ج.م) *</label>
+                  <label className="font-bold block mb-1">الكمية المتوفرة بالمخزون *</label>
+                  <input
+                    type="number"
+                    required
+                    value={prodStock}
+                    onChange={(e) => setProdStock(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                </div>
+              </div>
+
+              {/* Price and Original Price (Discount calculation) */}
+              <div className="grid grid-cols-2 gap-3 bg-amber-50/50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-amber-200/60 dark:border-zinc-700">
+                <div>
+                  <label className="font-bold block mb-1">سعر البيع الحالي (بعد الخصم) ج.م *</label>
                   <input
                     type="number"
                     required
                     value={prodPrice}
                     onChange={(e) => setProdPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-900 font-bold"
                   />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">السعر الأصلي قبل الخصم (اختياري)</label>
+                  <input
+                    type="number"
+                    placeholder="مثال: 1200"
+                    value={prodOriginalPrice || ''}
+                    onChange={(e) => setProdOriginalPrice(e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                  {prodOriginalPrice && prodOriginalPrice > prodPrice && (
+                    <span className="text-[10px] text-emerald-600 font-bold mt-1 block">
+                      نسبة الخصم المحسوبة: {Math.round(((prodOriginalPrice - prodPrice) / prodOriginalPrice) * 100)}%
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1125,8 +1337,9 @@ export const AdminDashboard: React.FC = () => {
                   >
                     + إضافة
                   </button>
-                  <label className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer border border-gray-300 dark:border-zinc-700">
-                    <span>رفع</span>
+                  <label className="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer border border-gray-300 dark:border-zinc-700 flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>رفع من جهازك</span>
                     <input type="file" accept="image/*" onChange={handleProductImageUpload} className="hidden" />
                   </label>
                 </div>
@@ -1148,16 +1361,26 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Video URL */}
+              {/* Video URL or Upload from device */}
               <div>
-                <label className="font-bold block mb-1">رابط فيديو المنتج (MP4 اختياري):</label>
-                <input
-                  type="text"
-                  placeholder="https://...video.mp4"
-                  value={prodVideoUrl}
-                  onChange={(e) => setProdVideoUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[11px]"
-                />
+                <label className="font-bold block mb-1">فيديو المنتج (رفع من الجهاز أو رابط منصة خارجية):</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="رابط فيديو MP4 أو يوتيوب..."
+                    value={prodVideoUrl}
+                    onChange={(e) => setProdVideoUrl(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-[11px]"
+                  />
+                  <label className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800 cursor-pointer border border-gray-300 dark:border-zinc-700 flex items-center gap-1.5 flex-shrink-0">
+                    <Video className="w-3.5 h-3.5 text-brand-goldDark" />
+                    <span>رفع فيديو من الجهاز</span>
+                    <input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
+                  </label>
+                </div>
+                {prodVideoUrl && (
+                  <span className="text-[10px] text-emerald-600 font-bold block mt-1">✓ تم إرفاق الفيديو بنجاح</span>
+                )}
               </div>
 
               <div>

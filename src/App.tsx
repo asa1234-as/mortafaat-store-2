@@ -15,10 +15,14 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 
 export const AppContent: React.FC = () => {
-  const { currentView, activeInvoiceOrder, setActiveInvoiceOrder } = useStore();
+  const { currentView, activeInvoiceOrder, setActiveInvoiceOrder, theme } = useStore();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-gray-900 selection:bg-brand-gold selection:text-black">
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
+      theme === 'dark' 
+        ? 'bg-[#07090E] text-gray-100' 
+        : 'bg-[#FDFBF7] text-gray-900'
+    } selection:bg-brand-gold selection:text-black`}>
       <Header />
 
       <main className="flex-1">

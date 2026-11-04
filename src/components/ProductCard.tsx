@@ -13,7 +13,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     setSelectedProduct, 
     currentUser, 
     setIsAuthModalOpen, 
-    setIsCheckoutOpen 
+    setIsCheckoutOpen,
+    language 
   } = useStore();
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -136,7 +137,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           {/* Title */}
           <h3 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-gray-100 group-hover:text-brand-goldDark line-clamp-2 transition-colors mb-2 leading-snug">
-            {product.name}
+            {language === 'ar' ? product.name : (product.nameEn || product.name)}
           </h3>
         </div>
 
@@ -144,11 +145,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Price */}
           <div className="flex items-baseline gap-2 mb-3">
             <span className="text-base sm:text-lg font-black text-black dark:text-white">
-              {product.price.toLocaleString()} <span className="text-xs font-bold text-gray-500">ج.م</span>
+              {product.price.toLocaleString()} <span className="text-xs font-bold text-gray-500">{language === 'ar' ? 'ج.م' : 'EGP'}</span>
             </span>
             {product.originalPrice && (
               <span className="text-xs text-gray-400 line-through">
-                {product.originalPrice.toLocaleString()} ج.م
+                {product.originalPrice.toLocaleString()} {language === 'ar' ? 'ج.م' : 'EGP'}
               </span>
             )}
           </div>
@@ -164,7 +165,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               className="py-2 px-2 rounded-xl bg-zinc-900 dark:bg-zinc-800 text-white hover:bg-zinc-800 text-[11px] font-bold flex items-center justify-center gap-1 transition-all disabled:opacity-50"
             >
               <ShoppingCart className="w-3.5 h-3.5 text-brand-gold" />
-              <span>أضف للسلة</span>
+              <span>{language === 'ar' ? 'أضف للسلة' : 'Add to Cart'}</span>
             </button>
 
             <button
@@ -173,7 +174,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               title="شراء فوري مع المعاينة"
             >
               <Zap className="w-3.5 h-3.5 fill-black" />
-              <span>اشتري الآن</span>
+              <span>{language === 'ar' ? 'اشتري الآن' : 'Buy Now'}</span>
             </button>
           </div>
         </div>

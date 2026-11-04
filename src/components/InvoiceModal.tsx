@@ -1,6 +1,7 @@
 import React from 'react';
 import { Order } from '../types';
-import { Printer, X, Download, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Printer, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface InvoiceModalProps {
   order: Order | null;
@@ -14,11 +15,13 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose }) =>
     window.print();
   };
 
+  const qrData = `مرتفعات ستور | طلب: #${order.id} | العميل: ${order.customerName} | الهاتف: ${order.phone} | المبلغ: ${order.total} ج.م | التاريخ: ${order.createdAt}`;
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 print:p-0 print:bg-white print:fixed print:inset-0">
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
       
       {/* Container */}
-      <div className="relative bg-white text-black rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-gray-300 my-6 print:m-0 print:border-none print:shadow-none print:w-full print:max-w-full">
+      <div className="relative bg-white text-black rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-gray-300 my-6 print:m-0 print:border-none print:shadow-none print:rounded-none print:w-full print:max-w-full">
         
         {/* Top Controls (Hidden in Print) */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-200 print:hidden">
@@ -43,14 +46,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose }) =>
           </div>
         </div>
 
-        {/* PRINTABLE INVOICE CONTENT (Pure Black & White Inspired by Sahl App) */}
+        {/* PRINTABLE INVOICE CONTENT */}
         <div id="printable-invoice" className="space-y-6 text-black bg-white">
           
           {/* Invoice Header */}
           <div className="flex items-start justify-between border-b-2 border-black pb-4">
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 border-2 border-black rounded-xl p-1 flex items-center justify-center bg-white">
-                <img src="/logo.png" alt="مرتفعات ستور" className="w-full h-full object-contain filter grayscale contrast-200" />
+                <img src="/logo.png" alt="مرتفعات ستور" className="w-full h-full object-contain" style={{ filter: 'grayscale(1) contrast(2)' }} />
               </div>
               <div>
                 <h1 className="text-xl font-black tracking-tight text-black">مرتفعات ستور</h1>
@@ -118,19 +121,21 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose }) =>
             </table>
           </div>
 
-          {/* Financial Totals */}
+          {/* Financial Totals + QR Code */}
           <div className="flex justify-between items-start gap-4">
             
-            {/* Barcode & Notice */}
-            <div className="space-y-2 max-w-[280px]">
-              {/* Simulated Barcode */}
-              <div className="border border-black p-2 rounded-lg text-center bg-gray-50">
-                <div className="h-8 flex items-center justify-center gap-1">
-                  {[4,2,6,1,3,5,2,4,1,7,3,2,6,2,4,1,5,3,2,6,1,4].map((w, i) => (
-                    <div key={i} className="h-full bg-black" style={{ width: `${w * 1.5}px` }} />
-                  ))}
-                </div>
-                <span className="text-[9px] font-mono tracking-widest block mt-1">*{order.id}*</span>
+            {/* QR Code */}
+            <div className="space-y-2 max-w-[180px]">
+              <div className="border border-black p-2 rounded-lg text-center bg-white">
+                <QRCodeSVG 
+                  value={qrData}
+                  size={120}
+                  level="M"
+                  includeMargin={false}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
+                <span className="text-[8px] font-mono tracking-wider block mt-1">امسح للتحقق من الطلب</span>
               </div>
               <p className="text-[9px] text-gray-600 leading-tight">
                 * يحق للعميل فحص ومعاينة المنتج قبل الدفع للمندوب، والاسترجاع خلال 14 يوماً وفقاً للشروط.
@@ -165,7 +170,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, onClose }) =>
           {/* Footer Stamp */}
           <div className="border-t border-gray-300 pt-3 flex items-center justify-between text-[10px] text-gray-500">
             <span>مرتفعات ستور - تجربة تسوق موثوقة ومضمونة</span>
-            <span>فاتورة ضريبية مبسطة صادرة إلكترونياً</span>
+            <span>فاتورة إلكترونية معتمدة</span>
           </div>
 
         </div>

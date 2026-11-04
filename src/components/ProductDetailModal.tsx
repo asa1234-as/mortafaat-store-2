@@ -100,12 +100,22 @@ export const ProductDetailModal: React.FC = () => {
           <div className="p-4 sm:p-6 bg-zinc-50 dark:bg-zinc-950 flex flex-col justify-between">
             <div className="aspect-square rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-sm relative flex items-center justify-center">
               {showVideo && selectedProduct.videoUrl ? (
-                <video 
-                  src={selectedProduct.videoUrl} 
-                  controls 
-                  autoPlay 
-                  className="w-full h-full object-cover"
-                />
+                selectedProduct.videoUrl.includes('youtube') || selectedProduct.videoUrl.includes('youtu.be') ? (
+                  <iframe
+                    src={selectedProduct.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                    title="Product Video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full rounded-2xl"
+                  />
+                ) : (
+                  <video 
+                    src={selectedProduct.videoUrl} 
+                    controls 
+                    autoPlay 
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                )
               ) : (
                 <img
                   src={selectedProduct.images[selectedImage] || selectedProduct.images[0]}
@@ -238,14 +248,19 @@ export const ProductDetailModal: React.FC = () => {
               </p>
 
               {/* Price */}
-              <div className="flex items-baseline gap-3 p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20 mb-4">
+              <div className="flex flex-wrap items-baseline gap-3 p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20 mb-4">
                 <span className="text-2xl sm:text-3xl font-black text-black dark:text-white">
                   {selectedProduct.price.toLocaleString()} <span className="text-sm font-bold text-gray-600 dark:text-gray-300">جنيه مصري</span>
                 </span>
-                {selectedProduct.originalPrice && (
-                  <span className="text-sm text-gray-400 line-through">
-                    {selectedProduct.originalPrice.toLocaleString()} ج.م
-                  </span>
+                {selectedProduct.originalPrice && selectedProduct.originalPrice > selectedProduct.price && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-400 line-through">
+                      {selectedProduct.originalPrice.toLocaleString()} ج.م
+                    </span>
+                    <span className="bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded-full shadow-sm">
+                      وفر {Math.round(((selectedProduct.originalPrice - selectedProduct.price) / selectedProduct.originalPrice) * 100)}%
+                    </span>
+                  </div>
                 )}
               </div>
 

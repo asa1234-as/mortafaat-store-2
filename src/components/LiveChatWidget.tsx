@@ -1,11 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore } from '../context/StoreContext';
-import { MessageSquare, X, Send, MessageCircle, Bot, User, ShieldCheck, MoveHorizontal } from 'lucide-react';
+import { MessageSquare, X, Send, MessageCircle, Bot, User, ShieldCheck } from 'lucide-react';
 
 export const LiveChatWidget: React.FC = () => {
   const { isChatOpen, setIsChatOpen, chatMessages, sendChatMessage, settings } = useStore();
   const [inputText, setInputText] = useState('');
-  const [isLeftPosition, setIsLeftPosition] = useState(true);
+  
+  // Drag state for the bubble
+  const [bubblePos, setBubblePos] = useState<{ x: number; y: number }>({ x: -1, y: -1 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; bx: number; by: number } | null>(null);
+  const bubbleRef = useRef<HTMLButtonElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize bubble position
+  useEffect(() => {
+    if (bubblePos.x === -1) {
+      setBubblePos({ x: 20, y: window.innerHeight - 80 });
+    }
+  }, []);
+
+  // Auto-scroll to bottom when chat opens or new message arrives
+  useEffect(() => {
+    if (isChatOpen && messagesEndRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [isChatOpen, chatMessages]);
+
+  // Drag handlers for the bubble
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      bx: bubblePos.x,
+      by: bubblePos.y
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [bubblePos]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging || !dragStartRef.current) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    const newX = Math.max(0, Math.min(window.innerWidth - 56, dragStartRef.current.bx + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 56, dragStartRef.current.by + dy));
+    setBubblePos({ x: newX, y: newY });
+  }, [isDragging]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragStartRef.current) return;
+    const dx = Math.abs(e.clientX - dragStartRef.current.x);
+    const dy = Math.abs(e.clientY - dragStartRef.current.y);
+    
+    // If barely moved, it's a click - open chat
+    if (dx < 5 && dy < 5) {
+      setIsChatOpen(true);
+    }
+    
+    setIsDragging(false);
+    dragStartRef.current = null;
+  }, [setIsChatOpen]);
 
   const quickQuestions = [
     'ما هي مدة وتكلفة الشحن؟',
@@ -26,33 +84,40 @@ export const LiveChatWidget: React.FC = () => {
 
   return (
     <>
-      {/* Sleek, Modern, Compact Floating Chat Bubble with Position Toggle */}
+      {/* Draggable Floating Chat Bubble */}
       {!isChatOpen && (
-        <div className={`fixed bottom-5 z-40 flex items-center gap-1.5 ${isLeftPosition ? 'left-5 flex-row' : 'right-5 flex-row-reverse'}`}>
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="w-12 h-12 rounded-full bg-brand-black text-brand-gold border-2 border-brand-gold shadow-2xl hover:scale-110 active:scale-95 transition-all flex items-center justify-center relative group"
-            title="محادثة مباشرة مع خدمة العملاء"
-          >
-            <MessageSquare className="w-5 h-5 text-brand-gold group-hover:scale-110 transition-transform" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black animate-ping" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black" />
-          </button>
-
-          {/* Quick Position Switcher (Left/Right) */}
-          <button
-            onClick={() => setIsLeftPosition(!isLeftPosition)}
-            className="w-6 h-6 rounded-full bg-zinc-800/80 hover:bg-black text-gray-300 hover:text-brand-gold flex items-center justify-center transition-colors text-[10px] shadow"
-            title="نقل مكان أيقونة الشات إلى الجهة المقابلة"
-          >
-            <MoveHorizontal className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <button
+          ref={bubbleRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          style={{
+            position: 'fixed',
+            left: `${bubblePos.x}px`,
+            top: `${bubblePos.y}px`,
+            zIndex: 40,
+            touchAction: 'none'
+          }}
+          className="w-12 h-12 rounded-full bg-brand-black text-brand-gold border-2 border-brand-gold shadow-2xl hover:scale-110 active:scale-95 transition-transform flex items-center justify-center relative cursor-grab active:cursor-grabbing select-none"
+          title="اسحبني لأي مكان أو اضغط لفتح المحادثة"
+        >
+          <MessageSquare className="w-5 h-5 text-brand-gold pointer-events-none" />
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black animate-ping pointer-events-none" />
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-black pointer-events-none" />
+        </button>
       )}
 
       {/* Chat Window */}
       {isChatOpen && (
-        <div className={`fixed bottom-5 z-50 w-[92vw] sm:w-[380px] h-[520px] bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-brand-gold/40 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200 ${isLeftPosition ? 'left-5' : 'right-5'}`}>
+        <div 
+          style={{
+            position: 'fixed',
+            left: `${Math.min(bubblePos.x, window.innerWidth - 400)}px`,
+            bottom: '20px',
+            zIndex: 50
+          }}
+          className="w-[92vw] sm:w-[380px] h-[520px] bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-brand-gold/40 flex flex-col overflow-hidden"
+        >
           
           {/* Header */}
           <div className="p-3.5 bg-brand-black text-white flex items-center justify-between border-b border-brand-gold/30">
@@ -68,13 +133,6 @@ export const LiveChatWidget: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsLeftPosition(!isLeftPosition)}
-                className="p-1 rounded text-gray-400 hover:text-white"
-                title="نقل الشات إلى الجهة المقابلة"
-              >
-                <MoveHorizontal className="w-3.5 h-3.5" />
-              </button>
               <a
                 href={`https://wa.me/${settings.whatsapp}`}
                 target="_blank"
@@ -108,7 +166,7 @@ export const LiveChatWidget: React.FC = () => {
           </div>
 
           {/* Messages Box */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-zinc-50 dark:bg-zinc-950">
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-zinc-50 dark:bg-zinc-950">
             {chatMessages.map((msg) => {
               const isUser = msg.sender === 'user';
               const isSupport = msg.sender === 'support';
@@ -163,6 +221,9 @@ export const LiveChatWidget: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {/* Invisible scroll anchor */}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Form */}

@@ -122,7 +122,7 @@ export const CheckoutModal: React.FC = () => {
           paymentMethod: 'online-gateway'
         });
         setCompletedOrder(order);
-        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+        confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 }, gravity: 1.2 });
       }, 1200);
       return;
     }
@@ -137,7 +137,7 @@ export const CheckoutModal: React.FC = () => {
     });
 
     setCompletedOrder(order);
-    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 }, gravity: 1.2 });
   };
 
   const handleWhatsAppConfirm = () => {
