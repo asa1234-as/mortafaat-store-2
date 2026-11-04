@@ -9,12 +9,13 @@ import { CartDrawer } from './components/CartDrawer';
 import { CheckoutModal } from './components/CheckoutModal';
 import { LiveChatWidget } from './components/LiveChatWidget';
 import { PolicyModal } from './components/PolicyModal';
+import { AuthModal } from './components/AuthModal';
 import { InvoiceModal } from './components/InvoiceModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 
 export const AppContent: React.FC = () => {
-  const { currentView, activeInvoiceOrder, setActiveInvoiceOrder, theme } = useStore();
+  const { currentView, isAdminAuthenticated, activeInvoiceOrder, setActiveInvoiceOrder, theme } = useStore();
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
@@ -25,7 +26,7 @@ export const AppContent: React.FC = () => {
       <Header />
 
       <main className="flex-1">
-        {currentView === 'store' ? (
+        {currentView === 'store' || !isAdminAuthenticated ? (
           <>
             <HeroSlider />
             <CategoryCards />
@@ -36,7 +37,7 @@ export const AppContent: React.FC = () => {
         )}
       </main>
 
-      {currentView === 'store' && <Footer />}
+      {(currentView === 'store' || !isAdminAuthenticated) && <Footer />}
 
       {/* Overlays & Drawers */}
       <ProductDetailModal />
@@ -44,6 +45,7 @@ export const AppContent: React.FC = () => {
       <CheckoutModal />
       <LiveChatWidget />
       <PolicyModal />
+      <AuthModal />
       <InvoiceModal 
         order={activeInvoiceOrder} 
         onClose={() => setActiveInvoiceOrder(null)} 

@@ -1,5 +1,6 @@
 export type ThemeMode = 'light' | 'dark';
 export type Language = 'ar' | 'en';
+export type UserRole = 'customer' | 'admin' | 'owner';
 
 export interface ProductReview {
   id: string;
@@ -11,6 +12,7 @@ export interface ProductReview {
 
 export interface Product {
   id: string;
+  sku?: string;
   name: string;
   nameEn: string;
   category: string;
@@ -21,7 +23,7 @@ export interface Product {
   videoUrl?: string;
   inStock: boolean;
   stockCount: number;
-  rating: number; // 0 by default until real reviews exist
+  rating: number;
   reviewsCount: number;
   reviews?: ProductReview[];
   features: string[];
@@ -39,6 +41,8 @@ export interface Category {
   icon: string;
   image?: string;
   itemCount?: number;
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
 export interface CartItem {
@@ -51,15 +55,20 @@ export interface CartItem {
 export type PaymentMethod = 'cod' | 'online-gateway';
 
 export interface Coupon {
+  id?: string;
   code: string;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
   minOrderValue?: number;
+  maxUses?: number;
+  usesCount?: number;
   isActive: boolean;
 }
 
 export interface Order {
   id: string;
+  orderNumber?: number;
+  userId?: string;
   customerName: string;
   phone: string;
   email?: string;
@@ -85,6 +94,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  role?: UserRole;
   isVerified: boolean;
 }
 
@@ -97,6 +107,7 @@ export interface HeroSlide {
   targetCategory: string;
   image: string;
   bgGradient?: string;
+  isActive?: boolean;
 }
 
 export interface BotKnowledgeRule {
@@ -115,7 +126,6 @@ export interface StoreSettings {
   shippingFee: number;
   freeShippingThreshold: number;
   announcementText: string;
-  adminPin: string;
 
   // Hero Slider timing
   sliderIntervalSeconds: number;
@@ -124,9 +134,6 @@ export interface StoreSettings {
   isOnlinePaymentEnabled: boolean;
   onlineGatewayName: string;
   onlineGatewayLogoUrl: string;
-  onlineGatewayMerchantId: string;
-  onlineGatewayApiKey: string;
-  onlineGatewaySecretKey: string;
   onlineGatewayEnvironment: 'live' | 'test';
   onlineGatewayNotice: string;
 
@@ -143,4 +150,14 @@ export interface ChatMessage {
   text: string;
   time: string;
   readByAdmin?: boolean;
+}
+
+export interface AdminAuditLog {
+  id: number;
+  actorId?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  details: Record<string, unknown>;
+  createdAt: string;
 }

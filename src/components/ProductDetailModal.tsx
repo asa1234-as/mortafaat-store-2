@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
+import { t, pn, locale } from '../i18n';
 import { 
   X, 
   ShoppingCart, 
@@ -23,7 +24,8 @@ export const ProductDetailModal: React.FC = () => {
     currentUser, 
     setIsAuthModalOpen, 
     setIsCheckoutOpen, 
-    updateProduct 
+    updateProduct,
+    language
   } = useStore();
 
   const [selectedImage, setSelectedImage] = useState(0);
@@ -43,7 +45,11 @@ export const ProductDetailModal: React.FC = () => {
   const handleBuyNow = () => {
     addToCart(selectedProduct, quantity, selectedSize || undefined, selectedColor || undefined);
     setSelectedProduct(null);
-    setIsCheckoutOpen(true);
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+    } else {
+      setIsCheckoutOpen(true);
+    }
   };
 
   const handleAddToCart = () => {
@@ -57,10 +63,10 @@ export const ProductDetailModal: React.FC = () => {
 
     const review = {
       id: `rev-${Date.now()}`,
-      customerName: newReviewAuthor || currentUser?.name || 'عميل مشتري',
+      customerName: newReviewAuthor || currentUser?.name || t("عميل مشتري"),
       rating: newReviewRating,
       comment: newReviewComment,
-      createdAt: new Date().toLocaleDateString('ar-EG')
+      createdAt: new Date().toLocaleDateString(locale())
     };
 
     const updatedReviews = [...(selectedProduct.reviews || []), review];
@@ -75,7 +81,7 @@ export const ProductDetailModal: React.FC = () => {
 
     setNewReviewComment('');
     setShowReviewForm(false);
-    alert('شكراً لتقييمك! تم نشر تقييمك الحقيقي للمنتج بنجاح.');
+    alert(t("شكراً لتقييمك! تم نشر تقييمك الحقيقي للمنتج بنجاح."));
   };
 
   return (
@@ -115,14 +121,14 @@ export const ProductDetailModal: React.FC = () => {
               ) : (
                 <img
                   src={selectedProduct.images[selectedImage] || selectedProduct.images[0]}
-                  alt={selectedProduct.name}
+                  alt={pn(selectedProduct)}
                   className="w-full h-full object-contain p-2"
                 />
               )}
 
               {selectedProduct.originalPrice && (
                 <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-black px-2.5 py-1 rounded-full shadow">
-                  تخفيض خاص
+                  {t("تخفيض خاص")}
                 </span>
               )}
             </div>
@@ -149,7 +155,7 @@ export const ProductDetailModal: React.FC = () => {
                   }`}
                 >
                   <Play className="w-4 h-4 fill-brand-gold text-brand-gold" />
-                  <span>فيديو</span>
+                  <span>{t("فيديو")}</span>
                 </button>
               )}
             </div>
@@ -158,15 +164,15 @@ export const ProductDetailModal: React.FC = () => {
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800 grid grid-cols-3 gap-2 text-center text-xs text-gray-600 dark:text-gray-400">
               <div className="flex flex-col items-center gap-1">
                 <Truck className="w-4 h-4 text-brand-gold" />
-                <span>شحن سريع</span>
+                <span>{t("شحن سريع")}</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <RotateCcw className="w-4 h-4 text-brand-gold" />
-                <span>معاينة قبل الدفع</span>
+                <span>{t("معاينة قبل الدفع")}</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <ShieldCheck className="w-4 h-4 text-brand-gold" />
-                <span>ضمان أصلي</span>
+                <span>{t("ضمان أصلي")}</span>
               </div>
             </div>
           </div>
@@ -191,8 +197,8 @@ export const ProductDetailModal: React.FC = () => {
                   </div>
                   <span className="text-xs font-semibold text-gray-500">
                     {selectedProduct.reviewsCount > 0 
-                      ? `${selectedProduct.rating} (${selectedProduct.reviewsCount} تقييم)` 
-                      : 'بانتظار أول تقييم للمنتج'}
+                      ? t("{0} ({1} تقييم)", selectedProduct.rating, selectedProduct.reviewsCount) 
+                      : t("بانتظار أول تقييم للمنتج")}
                   </span>
                 </div>
 
@@ -201,16 +207,16 @@ export const ProductDetailModal: React.FC = () => {
                   className="text-[11px] text-brand-goldDark hover:underline font-bold flex items-center gap-1"
                 >
                   <MessageSquarePlus className="w-3.5 h-3.5" />
-                  <span>أضف تقييمك</span>
+                  <span>{t("أضف تقييمك")}</span>
                 </button>
               </div>
 
               {/* Review Input Box */}
               {showReviewForm && (
                 <form onSubmit={handleAddReview} className="p-3 rounded-2xl bg-amber-50/70 dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 text-xs space-y-2 mb-4">
-                  <span className="font-bold block text-gray-800 dark:text-gray-200">أضف تقييمك وتجربتك الحقيقية:</span>
+                  <span className="font-bold block text-gray-800 dark:text-gray-200">{t("أضف تقييمك وتجربتك الحقيقية:")}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px]">التقييم:</span>
+                    <span className="text-[11px]">{t("التقييم:")}</span>
                     <div className="flex gap-1 text-amber-400 cursor-pointer">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
@@ -224,37 +230,37 @@ export const ProductDetailModal: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="رأيك الصريح في جودة المنتج..."
+                    placeholder={t("رأيك الصريح في جودة المنتج...")}
                     value={newReviewComment}
                     onChange={(e) => setNewReviewComment(e.target.value)}
                     className="w-full px-3 py-1.5 rounded-xl border border-gray-300 dark:border-zinc-600 dark:bg-zinc-900 text-xs"
                   />
                   <button type="submit" className="px-4 py-1.5 rounded-xl bg-brand-black text-brand-gold font-bold text-xs">
-                    نشر التقييم
+                    {t("نشر التقييم")}
                   </button>
                 </form>
               )}
 
               {/* Title */}
               <h2 className="text-lg sm:text-xl font-black text-gray-950 dark:text-white mb-1">
-                {selectedProduct.name}
+                {pn(selectedProduct)}
               </h2>
               <p className="text-xs text-gray-400 font-sans mb-4">
-                {selectedProduct.nameEn}
+                {language === 'ar' ? selectedProduct.nameEn : ''}
               </p>
 
               {/* Price */}
               <div className="flex flex-wrap items-baseline gap-3 p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20 mb-4">
                 <span className="text-2xl sm:text-3xl font-black text-black dark:text-white">
-                  {selectedProduct.price.toLocaleString()} <span className="text-sm font-bold text-gray-600 dark:text-gray-300">جنيه مصري</span>
+                  {selectedProduct.price.toLocaleString()} <span className="text-sm font-bold text-gray-600 dark:text-gray-300">{t("جنيه مصري")}</span>
                 </span>
                 {selectedProduct.originalPrice && selectedProduct.originalPrice > selectedProduct.price && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-400 line-through">
-                      {selectedProduct.originalPrice.toLocaleString()} ج.م
+                      {selectedProduct.originalPrice.toLocaleString()} {t("ج.م")}
                     </span>
                     <span className="bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded-full shadow-sm">
-                      وفر {Math.round(((selectedProduct.originalPrice - selectedProduct.price) / selectedProduct.originalPrice) * 100)}%
+                      {t("وفر")} {Math.round(((selectedProduct.originalPrice - selectedProduct.price) / selectedProduct.originalPrice) * 100)}%
                     </span>
                   </div>
                 )}
@@ -262,18 +268,18 @@ export const ProductDetailModal: React.FC = () => {
 
               {/* Description */}
               <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-                {selectedProduct.description}
+                {t(selectedProduct.description)}
               </p>
 
               {/* Features list */}
               {selectedProduct.features && selectedProduct.features.length > 0 && (
                 <div className="space-y-1.5 mb-4">
-                  <span className="text-xs font-bold text-gray-900 dark:text-gray-100 block">أبرز المميزات:</span>
+                  <span className="text-xs font-bold text-gray-900 dark:text-gray-100 block">{t("أبرز المميزات:")}</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {selectedProduct.features.map((feat, i) => (
                       <div key={i} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                        <span>{feat}</span>
+                        <span>{t(feat)}</span>
                       </div>
                     ))}
                   </div>
@@ -282,7 +288,7 @@ export const ProductDetailModal: React.FC = () => {
 
               {/* Quantity */}
               <div className="flex items-center gap-3 mb-6">
-                <span className="text-xs font-bold text-gray-900 dark:text-gray-100">الكمية:</span>
+                <span className="text-xs font-bold text-gray-900 dark:text-gray-100">{t("الكمية:")}</span>
                 <div className="flex items-center border border-gray-300 dark:border-zinc-700 rounded-xl bg-gray-50 dark:bg-zinc-800 overflow-hidden">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -308,7 +314,7 @@ export const ProductDetailModal: React.FC = () => {
                 className="py-3 rounded-2xl bg-zinc-900 dark:bg-zinc-800 text-white font-bold text-xs hover:bg-black transition-colors flex items-center justify-center gap-2"
               >
                 <ShoppingCart className="w-4 h-4 text-brand-gold" />
-                <span>إضافة إلى السلة</span>
+                <span>{t("إضافة إلى السلة")}</span>
               </button>
 
               <button
@@ -316,7 +322,7 @@ export const ProductDetailModal: React.FC = () => {
                 className="py-3 rounded-2xl bg-gold-gradient text-brand-black font-black text-xs hover:brightness-105 shadow-lg shadow-brand-gold/30 flex items-center justify-center gap-2 transition-transform active:scale-98"
               >
                 <Zap className="w-4 h-4 fill-black" />
-                <span>اشتري الآن ({selectedProduct.price * quantity} ج.م)</span>
+                <span>{t("اشتري الآن (")}{selectedProduct.price * quantity} {t("ج.م)")}</span>
               </button>
             </div>
           </div>

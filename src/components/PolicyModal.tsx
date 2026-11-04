@@ -2,6 +2,7 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { X, ShieldCheck, Truck, RotateCcw, Lock } from 'lucide-react';
 
+import { t } from '../i18n';
 export const PolicyModal: React.FC = () => {
   const { activePolicyModal, setActivePolicyModal, settings } = useStore();
 
@@ -9,9 +10,9 @@ export const PolicyModal: React.FC = () => {
 
   const getTitle = () => {
     switch (activePolicyModal) {
-      case 'return': return 'سياسة الاستبدال والاسترجاع';
-      case 'shipping': return 'سياسة الشحن والتسليم';
-      case 'privacy': return 'سياسة الخصوصية وشروط الاستخدام';
+      case 'return': return t("سياسة الاستبدال والاسترجاع");
+      case 'shipping': return t("سياسة الشحن والتسليم");
+      case 'privacy': return t("سياسة الخصوصية وشروط الاستخدام");
     }
   };
 
@@ -25,9 +26,9 @@ export const PolicyModal: React.FC = () => {
 
   const getContent = () => {
     switch (activePolicyModal) {
-      case 'return': return settings.returnPolicyText;
-      case 'shipping': return settings.shippingPolicyText;
-      case 'privacy': return settings.privacyPolicyText;
+      case 'return': return t(settings.returnPolicyText);
+      case 'shipping': return t(settings.shippingPolicyText);
+      case 'privacy': return t(settings.privacyPolicyText);
     }
   };
 
@@ -58,14 +59,14 @@ export const PolicyModal: React.FC = () => {
 
         <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <span>مرتفعات ستور يضمن حقوق المستهلك بنسبة 100% وفقاً لأحكام القانون المصري لحماية المستهلك.</span>
+          <span>{t("مرتفعات ستور يضمن حقوق المستهلك بنسبة 100% وفقاً لأحكام القانون المصري لحماية المستهلك.")}</span>
         </div>
 
         <button
           onClick={() => setActivePolicyModal(null)}
           className="w-full py-2.5 rounded-xl bg-brand-black text-white text-xs font-bold hover:bg-brand-gold hover:text-black transition-colors"
         >
-          فهمت وموافق
+          {t("فهمت وموافق")}
         </button>
       </div>
     </div>

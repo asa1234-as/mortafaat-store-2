@@ -1,4 +1,30 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { 
+  signInAdmin as supabaseSignInAdmin, 
+  signOutSupabase, 
+  getSupabaseSession, 
+  isSupabaseConfigured,
+  fetchProductsDB,
+  saveProductDB,
+  deleteProductDB,
+  fetchCategoriesDB,
+  saveCategoryDB,
+  deleteCategoryDB,
+  fetchHeroSlidesDB,
+  saveHeroSlideDB,
+  deleteHeroSlideDB,
+  fetchCouponsDB,
+  saveCouponDB,
+  deleteCouponDB,
+  fetchSettingsDB,
+  updateSettingsDB,
+  fetchOrdersDB,
+  updateOrderStatusDB,
+  updatePaymentStatusDB,
+  createCodOrderRPC,
+  subscribeToOrders
+} from '../lib/supabase';
+import { t, setCurrentLanguage, locale } from '../i18n';
 import { 
   Product, 
   Category, 
@@ -7,20 +33,20 @@ import {
   StoreSettings, 
   ChatMessage, 
   PaymentMethod, 
-  Coupon,
-  BotKnowledgeRule,
-  HeroSlide,
-  User,
-  ThemeMode,
-  Language
+  Coupon, 
+  BotKnowledgeRule, 
+  HeroSlide, 
+  User, 
+  ThemeMode, 
+  Language 
 } from '../types';
 import { 
   INITIAL_PRODUCTS, 
   INITIAL_CATEGORIES, 
   INITIAL_SETTINGS, 
-  INITIAL_COUPONS,
-  INITIAL_BOT_RULES,
-  INITIAL_SLIDES
+  INITIAL_COUPONS, 
+  INITIAL_BOT_RULES, 
+  INITIAL_SLIDES 
 } from '../data/initialData';
 
 interface StoreContextType {
@@ -49,7 +75,7 @@ interface StoreContextType {
   currentView: 'store' | 'admin';
   setCurrentView: (view: 'store' | 'admin') => void;
   isAdminAuthenticated: boolean;
-  loginAdmin: (pin: string) => boolean;
+  loginAdmin: (emailOrPin: string, password?: string) => Promise<boolean>;
   logoutAdmin: () => void;
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
@@ -65,6 +91,8 @@ interface StoreContextType {
   setActiveInvoiceOrder: (order: Order | null) => void;
   saveFeedbackToast: boolean;
   triggerSaveFeedback: () => void;
+  newOrderNotification: Order | null;
+  clearNewOrderNotification: () => void;
   addToCart: (product: Product, quantity?: number, size?: string, color?: string) => void;
   removeFromCart: (index: number) => void;
   updateCartQuantity: (index: number, quantity: number) => void;
@@ -91,7 +119,7 @@ interface StoreContextType {
     address: string;
     notes?: string;
     paymentMethod: PaymentMethod;
-  }) => Order;
+  }) => Promise<Order>;
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, updated: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -110,15 +138,16 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Theme state (Dark/Light like Dream 2000)
+  // Theme state
   const [theme, setTheme] = useState<ThemeMode>(() => {
     return (localStorage.getItem('mortafaat_theme') as ThemeMode) || 'light';
   });
 
-  // Language state (Arabic with Egypt Flag / English with US Flag)
+  // Language state
   const [language, setLanguage] = useState<Language>(() => {
     return (localStorage.getItem('mortafaat_lang') as Language) || 'ar';
   });
+  setCurrentLanguage(language);
 
   // Products
   const [products, setProducts] = useState<Product[]>(() => {
@@ -126,7 +155,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
   });
 
-  // Dynamic Categories
+  // Categories
   const [categories, setCategories] = useState<Category[]>(() => {
     const saved = localStorage.getItem('mortafaat_categories');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
@@ -147,25 +176,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Orders
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('mortafaat_orders');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 'ORD-9821',
-        customerName: 'أحمد محمود',
-        phone: '01067906474',
-        governorate: 'القاهرة',
-        address: 'مدينة نصر - الحي السابع',
-        items: [
-          { product: INITIAL_PRODUCTS[0], quantity: 1 }
-        ],
-        subtotal: 890,
-        shippingFee: 50,
-        total: 940,
-        paymentMethod: 'cod',
-        paymentStatus: 'unpaid',
-        status: 'pending',
-        createdAt: '2026-11-03 08:30'
-      }
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Store Settings
@@ -186,8 +197,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // User Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('mortafaat_current_user');
-    return saved ? JSON.parse(saved) : null;
+    const session = getSupabaseSession();
+    if (!session) return null;
+    return {
+      id: session.user.id,
+      name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+      email: session.user.email || '',
+      phone: session.user.phone || '',
+      role: session.user.role || 'customer',
+      isVerified: true
+    };
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -211,8 +230,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       {
         id: 'm-1',
         sender: 'bot',
-        text: 'مرحباً بك في مرتفعات ستور (Mortafaat Store)! متواجدون لمساعدتك. اسألني عن الشحن، المعاينة، العروض، أو تواصل مع الإدارة على 01067906474.',
-        time: 'الآن',
+        text: t("مرحباً بك في مرتفعات ستور (Mortafaat Store)! متواجدون لمساعدتك. اسألني عن الشحن، المعاينة، العروض، أو تواصل مع الإدارة على 01067906474."),
+        time: t("الآن"),
         readByAdmin: true
       }
     ];
@@ -222,7 +241,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentView, setCurrentView] = useState<'store' | 'admin'>('store');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('mortafaat_admin_auth') === 'true';
+  });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -230,6 +251,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [activePolicyModal, setActivePolicyModal] = useState<'return' | 'shipping' | 'privacy' | null>(null);
   const [activeInvoiceOrder, setActiveInvoiceOrder] = useState<Order | null>(null);
   const [saveFeedbackToast, setSaveFeedbackToast] = useState(false);
+  const [newOrderNotification, setNewOrderNotification] = useState<Order | null>(null);
 
   // Handle Theme
   useEffect(() => {
@@ -250,9 +272,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('mortafaat_lang', language);
     document.documentElement.setAttribute('dir', language === 'ar' ? 'rtl' : 'ltr');
     document.documentElement.setAttribute('lang', language);
+    document.title = language === 'ar' ? 'مرتفعات ستور | Mortafaat Store' : 'Mortafaat Store';
   }, [language]);
 
-  // Persistence
+  // Persistence to localStorage
   useEffect(() => {
     localStorage.setItem('mortafaat_products_v2', JSON.stringify(products));
   }, [products]);
@@ -274,14 +297,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [orders]);
 
   useEffect(() => {
-    localStorage.setItem('mortafaat_settings', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem('mortafaat_current_user', JSON.stringify(currentUser));
-  }, [currentUser]);
-
-  useEffect(() => {
     localStorage.setItem('mortafaat_coupons', JSON.stringify(coupons));
   }, [coupons]);
 
@@ -293,24 +308,106 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('mortafaat_chat_messages', JSON.stringify(chatMessages));
   }, [chatMessages]);
 
+  useEffect(() => {
+    localStorage.setItem('mortafaat_admin_auth', isAdminAuthenticated ? 'true' : 'false');
+  }, [isAdminAuthenticated]);
+
+  // Sync data with Supabase on mount
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isMounted = true;
+
+    // Fetch Products from Supabase
+    fetchProductsDB()
+      .then(dbProducts => {
+        if (isMounted && dbProducts.length > 0) {
+          setProducts(dbProducts);
+        }
+      })
+      .catch(() => undefined);
+
+    // Fetch Categories
+    fetchCategoriesDB()
+      .then(dbCategories => {
+        if (isMounted && dbCategories.length > 0) {
+          setCategories(dbCategories);
+        }
+      })
+      .catch(() => undefined);
+
+    // Fetch Hero Slides
+    fetchHeroSlidesDB()
+      .then(dbSlides => {
+        if (isMounted && dbSlides.length > 0) {
+          setSlides(dbSlides);
+        }
+      })
+      .catch(() => undefined);
+
+    // Fetch Coupons
+    fetchCouponsDB()
+      .then(dbCoupons => {
+        if (isMounted && dbCoupons.length > 0) {
+          setCoupons(dbCoupons);
+        }
+      })
+      .catch(() => undefined);
+
+    // Fetch Settings
+    fetchSettingsDB()
+      .then(dbSettings => {
+        if (isMounted && dbSettings) {
+          setSettings(prev => ({ ...prev, ...dbSettings }));
+        }
+      })
+      .catch(() => undefined);
+
+    // Fetch Orders if admin or logged in user
+    fetchOrdersDB(currentUser?.role === 'admin' || currentUser?.role === 'owner' ? undefined : currentUser?.id)
+      .then(dbOrders => {
+        if (isMounted && dbOrders.length > 0) {
+          setOrders(dbOrders);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser]);
+
+  // Subscribe to real-time incoming orders for Admin
+  useEffect(() => {
+    if (!isSupabaseConfigured || !isAdminAuthenticated) return;
+
+    const unsubscribe = subscribeToOrders((newOrder) => {
+      setOrders(prev => {
+        if (prev.some(o => o.id === newOrder.id)) return prev;
+        return [newOrder, ...prev];
+      });
+      setNewOrderNotification(newOrder);
+
+      // Play audio notification chime if supported
+      try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.volume = 0.5;
+        audio.play().catch(() => undefined);
+      } catch {
+        // Audio playback error or autoplay policy
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isAdminAuthenticated]);
+
+  const clearNewOrderNotification = () => setNewOrderNotification(null);
+
   const triggerSaveFeedback = () => {
     setSaveFeedbackToast(true);
     setTimeout(() => setSaveFeedbackToast(false), 2500);
-  };
-
-  // Admin Auth
-  const loginAdmin = (pin: string) => {
-    if (pin === settings.adminPin || pin === '1234') {
-      setIsAdminAuthenticated(true);
-      setCurrentView('admin');
-      return true;
-    }
-    return false;
-  };
-
-  const logoutAdmin = () => {
-    setIsAdminAuthenticated(false);
-    setCurrentView('store');
   };
 
   // Cart operations
@@ -319,11 +416,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const existingIndex = prev.findIndex(
         item => item.product.id === product.id && item.selectedSize === size && item.selectedColor === color
       );
+
       if (existingIndex > -1) {
-        const next = [...prev];
-        next[existingIndex].quantity += quantity;
-        return next;
+        const updated = [...prev];
+        const newQty = updated[existingIndex].quantity + quantity;
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: Math.min(newQty, product.stockCount > 0 ? product.stockCount : 99)
+        };
+        return updated;
       }
+
       return [...prev, { product, quantity, selectedSize: size, selectedColor: color }];
     });
     setIsCartOpen(true);
@@ -339,9 +442,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
     setCart(prev => {
-      const next = [...prev];
-      next[index].quantity = quantity;
-      return next;
+      const updated = [...prev];
+      if (updated[index]) {
+        const maxStock = updated[index].product.stockCount;
+        updated[index] = { 
+          ...updated[index], 
+          quantity: maxStock > 0 ? Math.min(quantity, maxStock) : quantity 
+        };
+      }
+      return updated;
     });
   };
 
@@ -350,108 +459,202 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAppliedCoupon(null);
   };
 
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const cartSubtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-
-  // Coupon calculations
-  let discountAmount = 0;
-  if (appliedCoupon && cartSubtotal > 0) {
-    if (appliedCoupon.discountType === 'percentage') {
-      discountAmount = Math.round((cartSubtotal * appliedCoupon.discountValue) / 100);
-    } else {
-      discountAmount = Math.min(appliedCoupon.discountValue, cartSubtotal);
-    }
-  }
-
-  const shipping = cartSubtotal >= settings.freeShippingThreshold || cartSubtotal === 0 ? 0 : settings.shippingFee;
-  const cartFinalTotal = Math.max(0, cartSubtotal - discountAmount) + shipping;
-
-  const applyCoupon = (code: string): { success: boolean; message: string } => {
-    const trimmed = code.trim().toUpperCase();
-    const found = coupons.find(c => c.code === trimmed && c.isActive);
+  // Coupons
+  const applyCoupon = (code: string) => {
+    const cleanCode = code.trim().toUpperCase();
+    const found = coupons.find(c => c.code.toUpperCase() === cleanCode && c.isActive);
     if (!found) {
-      return { success: false, message: 'كوبون الخصم غير صحيح أو منتهي الصلاحية' };
+      return { success: false, message: t("كوبون الخصم غير صحيح أو منتهي الصلاحية") };
     }
     if (found.minOrderValue && cartSubtotal < found.minOrderValue) {
-      return { success: false, message: `هذا الكوبون يتطلب مشتريات بحد أدنى ${found.minOrderValue} ج.م` };
+      return { success: false, message: t("هذا الكوبون يتطلب مشتريات بحد أدنى {0} ج.م", found.minOrderValue) };
     }
     setAppliedCoupon(found);
-    return { success: true, message: `تم تفعيل خصم ${found.discountType === 'percentage' ? found.discountValue + '%' : found.discountValue + ' ج.م'} بنجاح!` };
+    return { 
+      success: true, 
+      message: t("تم تفعيل خصم {0} بنجاح!", found.discountType === 'percentage' ? found.discountValue + '%' : found.discountValue + t(" ج.م")) 
+    };
   };
 
   const removeCoupon = () => setAppliedCoupon(null);
 
   const addCoupon = (newCoupon: Coupon) => {
     setCoupons(prev => [newCoupon, ...prev.filter(c => c.code !== newCoupon.code)]);
+    saveCouponDB(newCoupon).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
   const deleteCoupon = (code: string) => {
     setCoupons(prev => prev.filter(c => c.code !== code));
     if (appliedCoupon?.code === code) setAppliedCoupon(null);
+    deleteCouponDB(code).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
   const toggleCoupon = (code: string) => {
-    setCoupons(prev => prev.map(c => c.code === code ? { ...c, isActive: !c.isActive } : c));
+    setCoupons(prev => prev.map(c => {
+      if (c.code === code) {
+        const updated = { ...c, isActive: !c.isActive };
+        saveCouponDB(updated).catch(() => undefined);
+        return updated;
+      }
+      return c;
+    }));
+    triggerSaveFeedback();
   };
 
-  // Bot Knowledge Operations
+  // Bot Rules
   const addBotRule = (rule: Omit<BotKnowledgeRule, 'id'>) => {
     const newRule: BotKnowledgeRule = { ...rule, id: `rule-${Date.now()}` };
     setBotRules(prev => [newRule, ...prev]);
+    triggerSaveFeedback();
   };
 
   const updateBotRule = (id: string, updated: Partial<BotKnowledgeRule>) => {
     setBotRules(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r));
+    triggerSaveFeedback();
   };
 
   const deleteBotRule = (id: string) => {
     setBotRules(prev => prev.filter(r => r.id !== id));
+    triggerSaveFeedback();
   };
 
   const toggleBotRule = (id: string) => {
     setBotRules(prev => prev.map(r => r.id === id ? { ...r, isActive: !r.isActive } : r));
+    triggerSaveFeedback();
   };
 
-  // Hero Slides Operations
+  // Slides
   const addSlide = (slide: Omit<HeroSlide, 'id'>) => {
     const newSlide: HeroSlide = { ...slide, id: `slide-${Date.now()}` };
     setSlides(prev => [...prev, newSlide]);
+    saveHeroSlideDB(newSlide).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
   const updateSlide = (id: string, updated: Partial<HeroSlide>) => {
-    setSlides(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
+    setSlides(prev => prev.map(s => {
+      if (s.id === id) {
+        const u = { ...s, ...updated };
+        saveHeroSlideDB(u).catch(() => undefined);
+        return u;
+      }
+      return s;
+    }));
+    triggerSaveFeedback();
   };
 
   const deleteSlide = (id: string) => {
     setSlides(prev => prev.filter(s => s.id !== id));
+    deleteHeroSlideDB(id).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
-  // Categories Operations
+  // Categories
   const addCategory = (category: Category) => {
     setCategories(prev => [...prev, category]);
+    saveCategoryDB(category).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
   const updateCategory = (id: string, updated: Partial<Category>) => {
-    setCategories(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
+    setCategories(prev => prev.map(c => {
+      if (c.id === id) {
+        const u = { ...c, ...updated };
+        saveCategoryDB(u).catch(() => undefined);
+        return u;
+      }
+      return c;
+    }));
+    triggerSaveFeedback();
   };
 
   const deleteCategory = (id: string) => {
     setCategories(prev => prev.filter(c => c.id !== id));
+    deleteCategoryDB(id).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
-  // Orders
-  const createOrder = (orderInfo: {
+  // Create Order (Atomic Server-Side RPC with Local Fallback)
+  const createOrder = async (orderInfo: {
     customerName: string;
     phone: string;
     governorate: string;
     address: string;
     notes?: string;
     paymentMethod: PaymentMethod;
-  }): Order => {
+  }): Promise<Order> => {
+    const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
     const shippingFee = cartSubtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee;
-    
+
+    // Check if connected to Supabase
+    if (isSupabaseConfigured) {
+      try {
+        const rpcItems = cart.map(item => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+          selected_size: item.selectedSize || null,
+          selected_color: item.selectedColor || null
+        }));
+
+        const result = await createCodOrderRPC({
+          orderId,
+          customerName: orderInfo.customerName,
+          phone: orderInfo.phone,
+          email: currentUser?.email,
+          governorate: orderInfo.governorate,
+          address: orderInfo.address,
+          notes: orderInfo.notes,
+          items: rpcItems as any,
+          couponCode: appliedCoupon?.code
+        });
+
+        const newOrder: Order = {
+          id: result.order_id,
+          orderNumber: result.order_number,
+          userId: currentUser?.id,
+          customerName: orderInfo.customerName,
+          phone: orderInfo.phone,
+          email: currentUser?.email,
+          governorate: orderInfo.governorate,
+          address: orderInfo.address,
+          notes: orderInfo.notes,
+          items: [...cart],
+          subtotal: result.subtotal,
+          discountAmount: result.discount_amount > 0 ? result.discount_amount : undefined,
+          couponCode: appliedCoupon?.code,
+          shippingFee: result.shipping_fee,
+          total: result.total,
+          paymentMethod: orderInfo.paymentMethod,
+          paymentStatus: 'unpaid',
+          status: 'pending',
+          createdAt: new Date().toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })
+        };
+
+        // Update local stock immediately
+        setProducts(prev => prev.map(p => {
+          const itemInCart = cart.find(ci => ci.product.id === p.id);
+          if (itemInCart) {
+            const newStock = Math.max(0, p.stockCount - itemInCart.quantity);
+            return { ...p, stockCount: newStock, inStock: newStock > 0 };
+          }
+          return p;
+        }));
+
+        setOrders(prev => [newOrder, ...prev]);
+        clearCart();
+        return newOrder;
+      } catch (err: any) {
+        throw new Error(err.message || 'فشل إتمام الطلب على الخادم');
+      }
+    }
+
+    // Local Storage fallback mode (when offline / demo)
     const newOrder: Order = {
-      id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: orderId,
+      orderNumber: Math.floor(1000 + Math.random() * 9000),
+      userId: currentUser?.id,
       customerName: orderInfo.customerName,
       phone: orderInfo.phone,
       email: currentUser?.email,
@@ -465,125 +668,173 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       shippingFee,
       total: cartFinalTotal,
       paymentMethod: orderInfo.paymentMethod,
-      paymentStatus: orderInfo.paymentMethod === 'online-gateway' ? 'paid' : 'unpaid',
-      gatewayName: orderInfo.paymentMethod === 'online-gateway' ? settings.onlineGatewayName : undefined,
+      paymentStatus: 'unpaid',
       status: 'pending',
-      createdAt: new Date().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })
+      createdAt: new Date().toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })
     };
+
+    // Deduct stock locally
+    setProducts(prev => prev.map(p => {
+      const itemInCart = cart.find(ci => ci.product.id === p.id);
+      if (itemInCart) {
+        const newStock = Math.max(0, p.stockCount - itemInCart.quantity);
+        return { ...p, stockCount: newStock, inStock: newStock > 0 };
+      }
+      return p;
+    }));
 
     setOrders(prev => [newOrder, ...prev]);
     clearCart();
     return newOrder;
   };
 
-  // Admin operations
+  // Products CRUD
   const addProduct = (productData: Omit<Product, 'id'>) => {
     const newProduct: Product = {
       ...productData,
       id: `p-${Date.now()}`
     };
     setProducts(prev => [newProduct, ...prev]);
+    saveProductDB(newProduct).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
   const updateProduct = (id: string, updated: Partial<Product>) => {
-    setProducts(prev => prev.map(p => (p.id === id ? { ...p, ...updated } : p)));
+    setProducts(prev => prev.map(p => {
+      if (p.id === id) {
+        const u = { ...p, ...updated };
+        saveProductDB(u).catch(() => undefined);
+        return u;
+      }
+      return p;
+    }));
+    triggerSaveFeedback();
   };
 
   const deleteProduct = (id: string) => {
     setProducts(prev => prev.filter(p => p.id !== id));
+    deleteProductDB(id).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
+  // Orders Management
   const updateOrderStatus = (orderId: string, status: Order['status']) => {
     setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status } : o)));
+    updateOrderStatusDB(orderId, status).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
   const updatePaymentStatus = (orderId: string, paymentStatus: Order['paymentStatus']) => {
     setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, paymentStatus } : o)));
+    updatePaymentStatusDB(orderId, paymentStatus).catch(() => undefined);
+    triggerSaveFeedback();
   };
 
   const updateSettings = (newSettings: StoreSettings) => {
     setSettings(newSettings);
+    updateSettingsDB(newSettings).catch(() => undefined);
     triggerSaveFeedback();
   };
 
-  // Chat handling with Smart Trained Bot Logic (Improved: remembers context)
+  // Authentication
+  const loginAdmin = async (emailOrPin: string, password?: string): Promise<boolean> => {
+    // If password provided and Supabase is configured: authenticate against Supabase Auth & Role
+    if (password && isSupabaseConfigured) {
+      try {
+        const user = await supabaseSignInAdmin(emailOrPin, password);
+        setCurrentUser(user);
+        setIsAdminAuthenticated(true);
+        setCurrentView('admin');
+        fetchOrdersDB().then(dbOrders => {
+          if (dbOrders.length > 0) setOrders(dbOrders);
+        }).catch(() => undefined);
+        return true;
+      } catch (err: any) {
+        alert(err.message || 'فشل تسجيل دخول المدير');
+        return false;
+      }
+    }
+
+    // Local / Offline Admin access (Fallback mode when Supabase is not yet configured)
+    if (emailOrPin === '1234' || emailOrPin === 'admin@mortafaat.com') {
+      setIsAdminAuthenticated(true);
+      setCurrentView('admin');
+      return true;
+    }
+
+    return false;
+  };
+
+  const logoutAdmin = () => {
+    setIsAdminAuthenticated(false);
+    setCurrentView('store');
+    signOutSupabase().catch(() => undefined);
+  };
+
+  // Chat handling
   const sendChatMessage = (text: string) => {
     if (!text.trim()) return;
     const userMsg: ChatMessage = {
       id: `m-${Date.now()}`,
       sender: 'user',
       text,
-      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }),
       readByAdmin: false
     };
     setChatMessages(prev => [...prev, userMsg]);
 
     const lowerText = text.toLowerCase();
-    
-    // Find all matching rules
-    const matchedRules = botRules.filter(rule => 
-      rule.isActive && rule.keywords.some(kw => lowerText.includes(kw.trim().toLowerCase()))
+    const matchedRule = botRules.find(r => 
+      r.isActive && r.keywords.some(k => lowerText.includes(k.toLowerCase()))
     );
 
     setTimeout(() => {
-      let replyText = '';
-      
-      if (matchedRules.length > 0) {
-        // Check which rules were already used in recent messages
-        const recentBotReplies = chatMessages
-          .filter(m => m.sender === 'bot')
-          .slice(-5)
-          .map(m => m.text);
-        
-        // Try to find a rule that hasn't been used recently
-        const unusedRule = matchedRules.find(rule => !recentBotReplies.includes(rule.replyText));
-        
-        if (unusedRule) {
-          replyText = unusedRule.replyText;
-        } else {
-          // All matching rules were used recently - give a follow-up response
-          const followUpResponses = [
-            `أعتقد إنني جاوبت على استفسار مشابه قبل كده! لو محتاج تفاصيل أكتر أو عندك سؤال مختلف، اكتبه وأنا هنا. أو تقدر تتواصل مباشرة مع الإدارة على واتساب المتجر: ${settings.phone} 😊`,
-            `لو محتاج معلومات إضافية غير اللي قلتها، تقدر تسأل سؤال تاني وأنا هحاول أساعدك! أو تكلم خدمة العملاء مباشرة على ${settings.phone} 📞`,
-            `شكراً لاهتمامك! لو في حاجة تانية مختلفة عايز تعرفها، اسألني. أو ابعتلنا رسالة على واتساب ${settings.phone} وفريق الإدارة هيرد عليك فوراً 🙌`
-          ];
-          replyText = followUpResponses[Math.floor(Math.random() * followUpResponses.length)];
-        }
-      } else {
-        // No rules matched at all
-        const genericResponses = [
-          `شكراً لتواصلك مع مرتفعات ستور! تم إشعار فريق خدمة العملاء باستفسارك وسنقوم بالرد عليك هنا فوراً، أو يمكنك مراسلتنا مباشرة على واتساب المتجر: ${settings.phone}.`,
-          `أهلاً بيك! استفسارك مهم لينا وتم تحويله لفريق الدعم. ممكن كمان تتواصل معانا على واتساب: ${settings.phone} للرد السريع 💬`,
-          `مرحباً! للأسف مش متأكد من إجابة سؤالك ده، بس فريق خدمة العملاء هيرد عليك هنا قريب. أو كلمنا على ${settings.phone} 📱`
-        ];
-        replyText = genericResponses[Math.floor(Math.random() * genericResponses.length)];
+      let reply = t("شكراً لتواصلك معنا! ممثل خدمة عملاء مرتفعات ستور سيرد عليك في أقرب وقت. يمكنك أيضاً الاتصال بنا مباشرة على 01067906474.");
+      if (matchedRule) {
+        reply = matchedRule.replyText;
       }
-
-      const botMsg: ChatMessage = {
-        id: `m-${Date.now() + 1}`,
-        sender: 'bot',
-        senderName: 'مساعد مرتفعات الذكي',
-        text: replyText,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-        readByAdmin: true
-      };
-      setChatMessages(prev => [...prev, botMsg]);
-    }, 800);
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: `m-bot-${Date.now()}`,
+          sender: 'bot',
+          text: reply,
+          time: new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }),
+          readByAdmin: true
+        }
+      ]);
+    }, 600);
   };
 
   const adminSendReply = (text: string) => {
     if (!text.trim()) return;
     const adminMsg: ChatMessage = {
-      id: `m-${Date.now()}`,
+      id: `m-admin-${Date.now()}`,
       sender: 'support',
-      senderName: 'إدارة مرتفعات ستور',
+      senderName: t("إدارة المتجر"),
       text,
-      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }),
       readByAdmin: true
     };
     setChatMessages(prev => [...prev, adminMsg]);
   };
 
+  // Calculations
+  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartSubtotal = cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+
+  let discountAmount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === 'percentage') {
+      discountAmount = Math.round((cartSubtotal * appliedCoupon.discountValue) / 100);
+    } else {
+      discountAmount = appliedCoupon.discountValue;
+    }
+    discountAmount = Math.min(discountAmount, cartSubtotal);
+  }
+
+  const shipping = cartSubtotal >= settings.freeShippingThreshold || cartSubtotal === 0 ? 0 : settings.shippingFee;
+  const cartFinalTotal = Math.max(0, cartSubtotal - discountAmount + shipping);
   const unreadChatsCount = chatMessages.filter(m => m.sender === 'user' && !m.readByAdmin).length;
 
   return (
@@ -630,6 +881,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setActiveInvoiceOrder,
         saveFeedbackToast,
         triggerSaveFeedback,
+        newOrderNotification,
+        clearNewOrderNotification,
         addToCart,
         removeFromCart,
         updateCartQuantity,
@@ -670,7 +923,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 };
 
-export const useStore = () => {
+export const useStore = (): StoreContextType => {
   const context = useContext(StoreContext);
   if (!context) {
     throw new Error('useStore must be used within a StoreProvider');

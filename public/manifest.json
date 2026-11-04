@@ -1,16 +1,33 @@
 {
   "name": "مرتفعات ستور | Mortafaat Store",
-  "short_name": "مرتفعات ستور",
+  "short_name": "Mortafaat",
+  "description": "متجر مرتفعات ستور الرسمي - تسوق الأزياء الفاخرة والإلكترونيات والعطور والأجهزة المنزلية مع الدفع عند الاستلام والمعاينة",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0A0D14",
   "theme_color": "#D4AF37",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["shopping", "lifestyle"],
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ]
 }

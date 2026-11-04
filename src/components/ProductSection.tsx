@@ -3,6 +3,7 @@ import { useStore } from '../context/StoreContext';
 import { ProductCard } from './ProductCard';
 import { Filter, SlidersHorizontal, PackageX } from 'lucide-react';
 
+import { t } from '../i18n';
 export const ProductSection: React.FC = () => {
   const { products, categories, selectedCategory, searchQuery, setSelectedCategory, setSearchQuery, language } = useStore();
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
@@ -34,7 +35,7 @@ export const ProductSection: React.FC = () => {
 
   const getCategoryTitle = () => {
     if (selectedCategory === 'all') {
-      return language === 'ar' ? 'جميع المنتجات المتوفرة' : 'All Available Products';
+      return language === 'ar' ? t("جميع المنتجات المتوفرة") : 'All Available Products';
     }
     const cat = categories.find(c => c.id === selectedCategory);
     if (cat) {
@@ -55,7 +56,7 @@ export const ProductSection: React.FC = () => {
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
             {language === 'ar' 
-              ? `عرض ${sortedProducts.length} من أصل ${products.length} منتج في مرتفعات ستور`
+              ? t("عرض {0} من أصل {1} منتج في مرتفعات ستور", sortedProducts.length, products.length)
               : `Showing ${sortedProducts.length} of ${products.length} products in Mortafaat Store`}
           </p>
         </div>
@@ -71,7 +72,7 @@ export const ProductSection: React.FC = () => {
               onChange={(e) => setOnlyInStock(e.target.checked)}
               className="rounded text-brand-gold focus:ring-brand-gold"
             />
-            <span>المتوفر فقط بالمخزون</span>
+            <span>{t("المتوفر فقط بالمخزون")}</span>
           </label>
 
           {/* Sort selector */}
@@ -82,10 +83,10 @@ export const ProductSection: React.FC = () => {
               onChange={(e) => setSortBy(e.target.value as any)}
               className="bg-transparent focus:outline-none cursor-pointer"
             >
-              <option value="featured">المميز والأكثر طلباً</option>
-              <option value="price-asc">السعر: من الأقل للأعلى</option>
-              <option value="price-desc">السعر: من الأعلى للأقل</option>
-              <option value="rating">الأعلى تقييماً</option>
+              <option value="featured">{t("المميز والأكثر طلباً")}</option>
+              <option value="price-asc">{t("السعر: من الأقل للأعلى")}</option>
+              <option value="price-desc">{t("السعر: من الأعلى للأقل")}</option>
+              <option value="rating">{t("الأعلى تقييماً")}</option>
             </select>
           </div>
         </div>
@@ -95,9 +96,9 @@ export const ProductSection: React.FC = () => {
       {sortedProducts.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-3xl border border-gray-200 shadow-sm p-6 max-w-md mx-auto">
           <PackageX className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-gray-800">لم نجد أي منتجات تطابق بحثك</h3>
+          <h3 className="text-base font-bold text-gray-800">{t("لم نجد أي منتجات تطابق بحثك")}</h3>
           <p className="text-xs text-gray-500 mt-1 mb-4">
-            جرب كتابة اسم منتج آخر أو اختر قسماً مختلفاً
+            {t("جرب كتابة اسم منتج آخر أو اختر قسماً مختلفاً")}
           </p>
           <button
             onClick={() => {
@@ -107,7 +108,7 @@ export const ProductSection: React.FC = () => {
             }}
             className="px-5 py-2.5 rounded-xl bg-brand-black text-white text-xs font-bold hover:bg-brand-gold hover:text-black transition-colors"
           >
-            عرض كافة منتجات المتجر
+            {t("عرض كافة منتجات المتجر")}
           </button>
         </div>
       ) : (

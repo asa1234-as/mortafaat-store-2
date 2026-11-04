@@ -3,6 +3,7 @@ import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { ShoppingCart, Star, Zap, Eye, Play } from 'lucide-react';
 
+import { t } from '../i18n';
 interface ProductCardProps {
   product: Product;
 }
@@ -29,7 +30,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation();
     addToCart(product, 1);
-    setIsCheckoutOpen(true);
+    
+    // Check if user is logged in
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+    } else {
+      setIsCheckoutOpen(true);
+    }
   };
 
   const discountPercent = product.originalPrice 
@@ -58,7 +65,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {product.videoUrl && (
           <span className="absolute bottom-2.5 right-2.5 bg-black/75 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
             <Play className="w-3 h-3 fill-white" />
-            <span>فيديو</span>
+            <span>{t("فيديو")}</span>
           </span>
         )}
 
@@ -79,7 +86,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Discount Badge */}
         {discountPercent > 0 && (
           <span className="absolute top-2.5 right-2.5 bg-red-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-md">
-            خصم {discountPercent}%
+            {t("خصم")} {discountPercent}%
           </span>
         )}
 
@@ -87,7 +94,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {!product.inStock && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center">
             <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-              نفذت الكمية
+              {t("نفذت الكمية")}
             </span>
           </div>
         )}
@@ -100,7 +107,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               setSelectedProduct(product);
             }}
             className="w-10 h-10 rounded-full bg-white text-black hover:bg-brand-gold flex items-center justify-center shadow-lg transition-colors"
-            title="معاينة سريعة"
+            title={t("معاينة سريعة")}
           >
             <Eye className="w-5 h-5" />
           </button>
@@ -125,7 +132,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               ))}
             </div>
             <span className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500">
-              {product.reviewsCount > 0 ? `(${product.reviewsCount})` : '(0 تقييم)'}
+              {product.reviewsCount > 0 ? `(${product.reviewsCount})` : t("(0 تقييم)")}
             </span>
           </div>
 
@@ -139,11 +146,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Price */}
           <div className="flex items-baseline gap-2 mb-3">
             <span className="text-base sm:text-lg font-black text-black dark:text-white">
-              {product.price.toLocaleString()} <span className="text-xs font-bold text-gray-500">{language === 'ar' ? 'ج.م' : 'EGP'}</span>
+              {product.price.toLocaleString()} <span className="text-xs font-bold text-gray-500">{language === 'ar' ? t("ج.م") : 'EGP'}</span>
             </span>
             {product.originalPrice && (
               <span className="text-xs text-gray-400 line-through">
-                {product.originalPrice.toLocaleString()} {language === 'ar' ? 'ج.م' : 'EGP'}
+                {product.originalPrice.toLocaleString()} {language === 'ar' ? t("ج.م") : 'EGP'}
               </span>
             )}
           </div>
@@ -159,16 +166,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               className="py-2 px-2 rounded-xl bg-zinc-900 dark:bg-zinc-800 text-white hover:bg-zinc-800 text-[11px] font-bold flex items-center justify-center gap-1 transition-all disabled:opacity-50"
             >
               <ShoppingCart className="w-3.5 h-3.5 text-brand-gold" />
-              <span>{language === 'ar' ? 'أضف للسلة' : 'Add to Cart'}</span>
+              <span>{language === 'ar' ? t("أضف للسلة") : 'Add to Cart'}</span>
             </button>
 
             <button
               onClick={handleBuyNow}
               className="py-2 px-2 rounded-xl bg-gold-gradient text-brand-black hover:brightness-105 font-black text-[11px] flex items-center justify-center gap-1 transition-all shadow-sm"
-              title="شراء فوري مع المعاينة"
+              title={t("شراء فوري مع المعاينة")}
             >
               <Zap className="w-3.5 h-3.5 fill-black" />
-              <span>{language === 'ar' ? 'اشتري الآن' : 'Buy Now'}</span>
+              <span>{language === 'ar' ? t("اشتري الآن") : 'Buy Now'}</span>
             </button>
           </div>
         </div>

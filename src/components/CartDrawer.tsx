@@ -2,6 +2,7 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from 'lucide-react';
 
+import { t, pn } from '../i18n';
 export const CartDrawer: React.FC = () => {
   const { 
     isCartOpen, 
@@ -29,7 +30,7 @@ export const CartDrawer: React.FC = () => {
         <div className="p-4 bg-brand-black text-white flex items-center justify-between border-b border-brand-gold/30">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-brand-gold" />
-            <h3 className="font-bold text-base">سلة مشتريات مرتفعات ستور</h3>
+            <h3 className="font-bold text-base">{t("سلة مشتريات مرتفعات ستور")}</h3>
             <span className="text-xs bg-brand-gold text-brand-black px-2 py-0.5 rounded-full font-bold">
               {cart.length}
             </span>
@@ -46,12 +47,12 @@ export const CartDrawer: React.FC = () => {
         <div className="bg-amber-50 p-3 border-b border-amber-200 text-xs">
           {cartSubtotal >= settings.freeShippingThreshold ? (
             <p className="text-emerald-700 font-bold text-center">
-              🎉 مبروك! لقد حصلت على شحن مجاني لطلبك.
+              {t("🎉 مبروك! لقد حصلت على شحن مجاني لطلبك.")}
             </p>
           ) : (
             <div>
               <p className="text-gray-700 text-center font-semibold mb-1">
-                أضف منتجات بقيمة <span className="font-bold text-amber-700">{settings.freeShippingThreshold - cartSubtotal} ج.م</span> للحصول على شحن مجاني!
+                {t("أضف منتجات بقيمة")} <span className="font-bold text-amber-700">{settings.freeShippingThreshold - cartSubtotal} {t("ج.م")}</span> {t("للحصول على شحن مجاني!")}
               </p>
               <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
                 <div
@@ -68,13 +69,13 @@ export const CartDrawer: React.FC = () => {
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-500">
               <ShoppingBag className="w-16 h-16 text-gray-300 mb-3" />
-              <p className="font-bold text-gray-700 text-base">سلة المشتريات فارغة</p>
-              <p className="text-xs text-gray-400 mt-1">تصفح أقسام المتجر وأضف منتجاتك المفضلة الآن</p>
+              <p className="font-bold text-gray-700 text-base">{t("سلة المشتريات فارغة")}</p>
+              <p className="text-xs text-gray-400 mt-1">{t("تصفح أقسام المتجر وأضف منتجاتك المفضلة الآن")}</p>
               <button
                 onClick={() => setIsCartOpen(false)}
                 className="mt-4 px-6 py-2 rounded-xl bg-brand-black text-white text-xs font-bold hover:bg-brand-gold hover:text-black transition-colors"
               >
-                تصفح المنتجات
+                {t("تصفح المنتجات")}
               </button>
             </div>
           ) : (
@@ -85,24 +86,24 @@ export const CartDrawer: React.FC = () => {
               >
                 <img
                   src={item.product.images[0]}
-                  alt={item.product.name}
+                  alt={pn(item.product)}
                   className="w-16 h-16 rounded-xl object-cover bg-white border border-gray-200 flex-shrink-0"
                 />
 
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <h4 className="text-xs font-bold text-gray-900 line-clamp-1">
-                      {item.product.name}
+                      {pn(item.product)}
                     </h4>
                     <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-                      {item.selectedSize && <span>المقاس: {item.selectedSize}</span>}
-                      {item.selectedColor && <span>اللون: {item.selectedColor}</span>}
+                      {item.selectedSize && <span>{t("المقاس:")} {item.selectedSize}</span>}
+                      {item.selectedColor && <span>{t("اللون:")} {item.selectedColor}</span>}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-xs font-black text-brand-black">
-                      {(item.product.price * item.quantity).toLocaleString()} ج.م
+                      {(item.product.price * item.quantity).toLocaleString()} {t("ج.م")}
                     </span>
 
                     {/* Quantity controls */}
@@ -141,24 +142,24 @@ export const CartDrawer: React.FC = () => {
           <div className="p-4 bg-white border-t border-gray-200 space-y-3">
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-gray-600">
-                <span>قيمة المنتجات:</span>
-                <span className="font-bold text-gray-900">{cartSubtotal.toLocaleString()} ج.م</span>
+                <span>{t("قيمة المنتجات:")}</span>
+                <span className="font-bold text-gray-900">{cartSubtotal.toLocaleString()} {t("ج.م")}</span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-bold">
-                  <span>خصم الكوبون ({appliedCoupon?.code}):</span>
-                  <span>- {discountAmount.toLocaleString()} ج.م</span>
+                  <span>{t("خصم الكوبون (")}{appliedCoupon?.code}):</span>
+                  <span>- {discountAmount.toLocaleString()} {t("ج.م")}</span>
                 </div>
               )}
               <div className="flex justify-between text-gray-600">
-                <span>مصاريف الشحن والتوصيل:</span>
+                <span>{t("مصاريف الشحن والتوصيل:")}</span>
                 <span className="font-bold text-emerald-600">
-                  {shipping === 0 ? 'مجاني 🎉' : `${shipping} ج.م`}
+                  {shipping === 0 ? t("مجاني 🎉") : t("{0} ج.م", shipping)}
                 </span>
               </div>
               <div className="flex justify-between text-sm font-black text-brand-black pt-2 border-t border-gray-200">
-                <span>الإجمالي النهائي:</span>
-                <span className="text-base text-brand-goldDark">{cartFinalTotal.toLocaleString()} ج.م</span>
+                <span>{t("الإجمالي النهائي:")}</span>
+                <span className="text-base text-brand-goldDark">{cartFinalTotal.toLocaleString()} {t("ج.م")}</span>
               </div>
             </div>
 
@@ -169,7 +170,7 @@ export const CartDrawer: React.FC = () => {
               }}
               className="w-full py-3.5 rounded-2xl bg-gold-gradient text-brand-black font-black text-sm hover:brightness-105 shadow-xl shadow-brand-gold/25 flex items-center justify-center gap-2 transition-transform active:scale-98"
             >
-              <span>متابعة إتمام الطلب</span>
+              <span>{t("متابعة إتمام الطلب")}</span>
               <ArrowLeft className="w-4 h-4" />
             </button>
           </div>

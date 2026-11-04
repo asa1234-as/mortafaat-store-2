@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/StoreContext';
 import { ChevronRight, ChevronLeft, Sparkles, Shield, Truck, CreditCard } from 'lucide-react';
 
+import { t } from '../i18n';
 export const HeroSlider: React.FC = () => {
   const { slides, settings, setSelectedCategory } = useStore();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -33,7 +34,7 @@ export const HeroSlider: React.FC = () => {
             <div className="absolute inset-0">
               <img
                 src={slide.image}
-                alt={slide.title}
+                alt={t(slide.title)}
                 className="w-full h-full object-cover object-center opacity-35 transform scale-105 transition-transform duration-7000"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-950 to-amber-950/70 opacity-95" />
@@ -45,15 +46,15 @@ export const HeroSlider: React.FC = () => {
               <div className="max-w-2xl space-y-3 sm:space-y-4">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-gold/20 border border-brand-gold/40 text-brand-gold text-xs sm:text-sm font-bold backdrop-blur-md">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>{slide.tag}</span>
+                  <span>{t(slide.tag)}</span>
                 </div>
 
                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
-                  {slide.title}
+                  {t(slide.title)}
                 </h1>
 
                 <p className="text-gray-300 text-xs sm:text-base md:text-lg leading-relaxed">
-                  {slide.subtitle}
+                  {t(slide.subtitle)}
                 </p>
 
                 <div className="pt-2 flex items-center gap-3">
@@ -61,10 +62,10 @@ export const HeroSlider: React.FC = () => {
                     onClick={() => setSelectedCategory(slide.targetCategory || 'all')}
                     className="px-6 py-2.5 sm:py-3 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs sm:text-sm hover:brightness-110 shadow-lg shadow-brand-gold/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
                   >
-                    {slide.ctaText || 'تسوق الآن'}
+                    {t(slide.ctaText || "تسوق الآن")}
                   </button>
                   <span className="text-xs text-gray-400 hidden sm:inline">
-                    توصيل سريع ومعاينة قبل الدفع
+                    {t("توصيل سريع ومعاينة قبل الدفع")}
                   </span>
                 </div>
               </div>
@@ -110,19 +111,19 @@ export const HeroSlider: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
           <div className="flex items-center justify-center gap-2 text-gray-300 text-xs sm:text-sm font-semibold">
             <Truck className="w-4 h-4 text-brand-gold" />
-            <span>شحن لجميع محافظات مصر</span>
+            <span>{t("شحن لجميع محافظات مصر")}</span>
           </div>
           <div className="flex items-center justify-center gap-2 text-gray-300 text-xs sm:text-sm font-semibold">
             <Shield className="w-4 h-4 text-brand-gold" />
-            <span>منتجات أصلية ومضمونة 100%</span>
+            <span>{t("منتجات أصلية ومضمونة 100%")}</span>
           </div>
           <div className="flex items-center justify-center gap-2 text-gray-300 text-xs sm:text-sm font-semibold">
             <CreditCard className="w-4 h-4 text-brand-gold" />
-            <span>دفع عند الاستلام مع المعاينة</span>
+            <span>{t("دفع عند الاستلام مع المعاينة")}</span>
           </div>
           <div className="flex items-center justify-center gap-2 text-gray-300 text-xs sm:text-sm font-semibold">
             <Sparkles className="w-4 h-4 text-brand-gold" />
-            <span>استبدال واسترجاع بكل سهولة</span>
+            <span>{t("استبدال واسترجاع بكل سهولة")}</span>
           </div>
         </div>
       </div>

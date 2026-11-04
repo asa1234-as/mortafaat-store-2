@@ -2,8 +2,9 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Smartphone, Shirt, Sparkles, Home, HeartPulse, ArrowLeft } from 'lucide-react';
 
+import { t } from '../i18n';
 export const CategoryCards: React.FC = () => {
-  const { categories, selectedCategory, setSelectedCategory, products } = useStore();
+  const { categories, selectedCategory, setSelectedCategory, products, language } = useStore();
 
   const getIcon = (id: string) => {
     switch (id) {
@@ -26,10 +27,10 @@ export const CategoryCards: React.FC = () => {
         <div>
           <h2 className="text-xl sm:text-2xl font-black text-brand-black flex items-center gap-2">
             <span className="w-2.5 h-6 bg-brand-gold rounded-full inline-block"></span>
-            تسوق حسب الأقسام
+            {t("تسوق حسب الأقسام")}
           </h2>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            اختر القسم المفضل لديك وتصفح أفضل منتجات مرتفعات ستور
+            {t("اختر القسم المفضل لديك وتصفح أفضل منتجات مرتفعات ستور")}
           </p>
         </div>
 
@@ -38,7 +39,7 @@ export const CategoryCards: React.FC = () => {
             onClick={() => setSelectedCategory('all')}
             className="text-xs sm:text-sm font-bold text-brand-goldDark hover:underline flex items-center gap-1"
           >
-            <span>عرض كل الأقسام</span>
+            <span>{t("عرض كل الأقسام")}</span>
             <ArrowLeft className="w-4 h-4" />
           </button>
         )}
@@ -72,10 +73,10 @@ export const CategoryCards: React.FC = () => {
 
                 <div>
                   <h3 className={`font-bold text-sm sm:text-base ${isSelected ? 'text-white' : 'text-gray-900 group-hover:text-brand-goldDark'}`}>
-                    {cat.nameAr}
+                    {language === 'ar' ? cat.nameAr : cat.nameEn}
                   </h3>
                   <span className={`text-[11px] block mt-0.5 ${isSelected ? 'text-brand-gold' : 'text-gray-500'}`}>
-                    {count} منتجات متوفرة
+                    {count} {t("منتجات متوفرة")}
                   </span>
                 </div>
               </div>
