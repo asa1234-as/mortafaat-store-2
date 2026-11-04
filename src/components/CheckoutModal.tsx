@@ -98,12 +98,6 @@ export const CheckoutModal: React.FC = () => {
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check customer authentication
-    if (!currentUser) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-
     if (!customerName || !phone || !address) {
       alert('يرجى ملء الاسم، رقم الهاتف، والعنوان بالكامل');
       return;
@@ -275,23 +269,6 @@ export const CheckoutModal: React.FC = () => {
           /* Checkout Form View (Dream 2000 & Dubai Phone Style) */
           <form onSubmit={handleSubmitOrder} className="p-4 sm:p-6 space-y-4 max-h-[85vh] overflow-y-auto">
             
-            {/* User Login Banner if not signed in */}
-            {!currentUser && (
-              <div className="p-3 bg-amber-50 dark:bg-zinc-800 rounded-2xl border border-amber-300 dark:border-zinc-700 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-brand-goldDark" />
-                  <span>لتسجيل بيانات طلبك وحفظ فواتيرك، يرجى تسجيل الدخول أولاً:</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-brand-black text-brand-gold font-bold text-xs hover:bg-brand-gold hover:text-black transition-colors"
-                >
-                  تسجيل الدخول / إنشاء حساب
-                </button>
-              </div>
-            )}
-
             {/* Customer Details */}
             <div className="space-y-3">
               <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">

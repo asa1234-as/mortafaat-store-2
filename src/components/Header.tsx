@@ -13,7 +13,8 @@ import {
   LogOut,
   ShieldCheck,
   Lock,
-  Store
+  Store,
+  Download
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -107,40 +108,9 @@ export const Header: React.FC = () => {
           <span>{settings.announcementText}</span>
         </div>
 
-        {/* Top Controls: Language + Theme Toggle + User Auth + Owner Portal */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        {/* Top Controls: Theme Toggle + Owner Portal */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
           
-          {/* Language Switcher (Egypt Flag 🇪🇬 vs US Flag 🇺🇸) */}
-          <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-full text-[11px]">
-            {language === 'ar' ? (
-              <button 
-                onClick={() => setLanguage('en')}
-                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-                title="Switch to English"
-              >
-                <img 
-                  src="https://flagcdn.com/w40/us.png" 
-                  alt="US" 
-                  className="w-4 h-4 rounded-full object-cover border border-white/40" 
-                />
-                <span className="font-sans font-bold">English</span>
-              </button>
-            ) : (
-              <button 
-                onClick={() => setLanguage('ar')}
-                className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-                title="التحويل للغة العربية"
-              >
-                <img 
-                  src="https://flagcdn.com/w40/eg.png" 
-                  alt="EG" 
-                  className="w-4 h-4 rounded-full object-cover border border-white/40" 
-                />
-                <span className="font-bold">العربية</span>
-              </button>
-            )}
-          </div>
-
           {/* Theme Toggle: Sun vs Moon (Dream 2000 Style) */}
           <button
             onClick={toggleTheme}
@@ -154,38 +124,13 @@ export const Header: React.FC = () => {
             )}
           </button>
 
-          {/* User Account Login / Profile */}
-          <div className="flex items-center">
-            {currentUser ? (
-              <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-full text-[11px]">
-                <UserIcon className="w-3.5 h-3.5 text-black" />
-                <span className="font-bold max-w-[80px] truncate">{currentUser.name}</span>
-                <button
-                  onClick={() => setCurrentUser(null)}
-                  className="text-red-900 hover:text-red-700 mr-1 text-[10px] font-black"
-                  title="تسجيل الخروج"
-                >
-                  (خروج)
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-1 bg-black/20 hover:bg-black/35 px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
-              >
-                <UserIcon className="w-3.5 h-3.5 text-black" />
-                <span>تسجيل الدخول</span>
-              </button>
-            )}
-          </div>
-
           {/* Owner Secret Admin Suite Trigger (Top Header) */}
           <button
             onClick={() => setIsAdminPinModalOpen(true)}
-            className="w-6 h-6 rounded-full bg-black/30 hover:bg-black/50 text-black flex items-center justify-center transition-colors"
+            className="w-7 h-7 rounded-full bg-black/30 hover:bg-black/50 text-black flex items-center justify-center transition-colors"
             title="بوابة إدارة المتجر (خاص بالمالك)"
           >
-            <ShieldCheck className="w-3.5 h-3.5" />
+            <ShieldCheck className="w-4 h-4" />
           </button>
 
         </div>

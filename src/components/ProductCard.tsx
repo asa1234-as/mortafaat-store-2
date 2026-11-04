@@ -29,13 +29,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation();
     addToCart(product, 1);
-    
-    // Check if user is logged in
-    if (!currentUser) {
-      setIsAuthModalOpen(true);
-    } else {
-      setIsCheckoutOpen(true);
-    }
+    setIsCheckoutOpen(true);
   };
 
   const discountPercent = product.originalPrice 

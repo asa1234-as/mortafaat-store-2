@@ -3,7 +3,7 @@ import { useStore } from '../context/StoreContext';
 import { MessageSquare, X, Send, MessageCircle, Bot, User, ShieldCheck } from 'lucide-react';
 
 export const LiveChatWidget: React.FC = () => {
-  const { isChatOpen, setIsChatOpen, chatMessages, sendChatMessage, settings } = useStore();
+  const { isChatOpen, setIsChatOpen, chatMessages, sendChatMessage, settings, botRules } = useStore();
   const [inputText, setInputText] = useState('');
   
   // Drag state for the bubble
@@ -206,17 +206,18 @@ export const LiveChatWidget: React.FC = () => {
               );
             })}
 
-            {/* Quick Suggestions */}
+            {/* Quick Suggestions from Bot Knowledge Rules */}
             <div className="pt-2">
-              <span className="text-[10px] font-bold text-gray-500 block mb-1">أسئلة يمكنك الضغط عليها:</span>
-              <div className="flex flex-col gap-1">
-                {quickQuestions.map((q, idx) => (
+              <span className="text-[10px] font-bold text-gray-500 block mb-1">استفسارات سريعة يفهمها البوت تلقائياً:</span>
+              <div className="flex flex-wrap gap-1">
+                {botRules.filter(r => r.isActive).map((rule) => (
                   <button
-                    key={idx}
-                    onClick={() => handleQuickQuestion(q)}
-                    className="text-right text-[11px] p-2 rounded-xl bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700 border border-gray-200 dark:border-zinc-700 hover:border-brand-gold text-gray-700 dark:text-gray-200 transition-colors"
+                    key={rule.id}
+                    onClick={() => handleQuickQuestion(rule.keywords[0] || rule.title)}
+                    className="text-right text-[11px] px-2.5 py-1.5 rounded-xl bg-white dark:bg-zinc-800 hover:bg-amber-50 dark:hover:bg-zinc-700 border border-gray-200 dark:border-zinc-700 hover:border-brand-gold text-gray-800 dark:text-gray-200 transition-colors flex items-center gap-1.5 shadow-2xs"
                   >
-                    {q}
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-gold"></span>
+                    <span>{rule.title}</span>
                   </button>
                 ))}
               </div>

@@ -43,11 +43,7 @@ export const ProductDetailModal: React.FC = () => {
   const handleBuyNow = () => {
     addToCart(selectedProduct, quantity, selectedSize || undefined, selectedColor || undefined);
     setSelectedProduct(null);
-    if (!currentUser) {
-      setIsAuthModalOpen(true);
-    } else {
-      setIsCheckoutOpen(true);
-    }
+    setIsCheckoutOpen(true);
   };
 
   const handleAddToCart = () => {
