@@ -61,63 +61,101 @@ export class CashOnDeliveryAdapter implements PaymentGatewayAdapter {
 }
 
 /**
- * 2. Paymob Adapter (Ready for integration upon providing Merchant ID, API Key, and Integration ID)
+ * 2. Paymob Adapter (Ready for integration upon providing Merchant credentials in Supabase Edge Function Secrets)
  */
 export class PaymobAdapter implements PaymentGatewayAdapter {
   readonly provider = 'paymob' as const;
-  private readonly apiKey?: string;
-  private readonly integrationId?: string;
+  private readonly isConfigured: boolean;
 
   constructor(apiKey?: string, integrationId?: string) {
-    this.apiKey = apiKey;
-    this.integrationId = integrationId;
+    // Only available if real merchant credentials exist (never placeholder or mock)
+    this.isConfigured = Boolean(apiKey && integrationId && !apiKey.includes('YOUR_') && !apiKey.includes('sample'));
   }
 
   get isAvailable(): boolean {
-    return Boolean(this.apiKey && this.integrationId && !this.apiKey.includes('YOUR_'));
+    return this.isConfigured;
   }
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResult> {
     if (!this.isAvailable) {
-      throw new Error('بوابة Paymob غير مفعلة لعدم توفر مفاتيح الاعتماد الحقيقية (API Key & Integration ID).');
+      throw new Error('بوابة Paymob غير مفعلة حالياً لعدم ربط بيانات التاجر الحقيقية ومفاتيح الربط في Supabase Edge Function Secrets.');
     }
 
-    // Call server-side Supabase Edge Function to safely create Paymob intention without exposing secrets
+    // Call server-side Supabase Edge Function to safely create Paymob session without exposing secrets
+    const edgeFunctionUrl = `${request.returnUrl.replace(/\/$/, '')}/functions/v1/create-payment-intent`;
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'paymob',
+        orderId: request.orderId,
+        amountCents: request.amountCents,
+        currency: request.currency,
+        customer: request.customer,
+        returnUrl: request.returnUrl
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'فشل إنشاء جلسة الدفع الإلكتروني مع مزود الخدمة Paymob.');
+    }
+
+    const data = await response.json();
     return {
       success: true,
       provider: 'paymob',
-      redirectUrl: `https://accept.paymob.com/api/acceptance/iframes/sample?order_id=${request.orderId}`,
-      referenceId: `PAYMOB-${request.orderId}`,
+      redirectUrl: data.redirectUrl,
+      referenceId: data.referenceId || `PAYMOB-${request.orderId}`,
       isImmediateSettlement: false
     };
   }
 }
 
 /**
- * 3. Kashier Adapter (Ready for integration upon providing Merchant ID and Secret Key)
+ * 3. Kashier Adapter (Ready for integration upon providing Merchant ID and Secret Key in Supabase Edge Function Secrets)
  */
 export class KashierAdapter implements PaymentGatewayAdapter {
   readonly provider = 'kashier' as const;
-  private readonly merchantId?: string;
+  private readonly isConfigured: boolean;
 
   constructor(merchantId?: string) {
-    this.merchantId = merchantId;
+    this.isConfigured = Boolean(merchantId && !merchantId.includes('YOUR_') && !merchantId.includes('sample'));
   }
 
   get isAvailable(): boolean {
-    return Boolean(this.merchantId && !this.merchantId.includes('YOUR_'));
+    return this.isConfigured;
   }
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResult> {
     if (!this.isAvailable) {
-      throw new Error('بوابة Kashier غير مفعلة لعدم توفر Merchant ID الحقيقي.');
+      throw new Error('بوابة Kashier غير مفعلة حالياً لعدم ربط Merchant ID والمفاتيح الحقيقية.');
     }
 
+    const edgeFunctionUrl = `${request.returnUrl.replace(/\/$/, '')}/functions/v1/create-payment-intent`;
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'kashier',
+        orderId: request.orderId,
+        amount: request.amount,
+        customer: request.customer,
+        returnUrl: request.returnUrl
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'فشل إنشاء جلسة الدفع مع بوابة Kashier.');
+    }
+
+    const data = await response.json();
     return {
       success: true,
       provider: 'kashier',
-      redirectUrl: `https://checkout.kashier.io/?merchantId=${this.merchantId}&orderId=${request.orderId}&amount=${request.amount}`,
-      referenceId: `KASHIER-${request.orderId}`,
+      redirectUrl: data.redirectUrl,
+      referenceId: data.referenceId || `KASHIER-${request.orderId}`,
       isImmediateSettlement: false
     };
   }
@@ -128,26 +166,44 @@ export class KashierAdapter implements PaymentGatewayAdapter {
  */
 export class FawryAdapter implements PaymentGatewayAdapter {
   readonly provider = 'fawry' as const;
-  private readonly merchantCode?: string;
+  private readonly isConfigured: boolean;
 
   constructor(merchantCode?: string) {
-    this.merchantCode = merchantCode;
+    this.isConfigured = Boolean(merchantCode && !merchantCode.includes('YOUR_') && !merchantCode.includes('sample'));
   }
 
   get isAvailable(): boolean {
-    return Boolean(this.merchantCode && !this.merchantCode.includes('YOUR_'));
+    return this.isConfigured;
   }
 
   async createPayment(request: CreatePaymentRequest): Promise<CreatePaymentResult> {
     if (!this.isAvailable) {
-      throw new Error('خدمة فوري غير مفعلة لعدم توفر Merchant Code الحقيقي.');
+      throw new Error('خدمة فوري غير مفعلة حالياً لعدم ربط Merchant Code والمفاتيح الحقيقية.');
     }
 
+    const edgeFunctionUrl = `${request.returnUrl.replace(/\/$/, '')}/functions/v1/create-payment-intent`;
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: 'fawry',
+        orderId: request.orderId,
+        amount: request.amount,
+        customer: request.customer
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'فشل إصدار كود الدفع من فوري.');
+    }
+
+    const data = await response.json();
     return {
       success: true,
       provider: 'fawry',
-      referenceId: `FAWRY-${request.orderId}`,
-      instructions: 'توجه لأقرب منفذ فوري واستخدم كود الدفع الخاص بطلبك.',
+      referenceId: data.referenceId || `FAWRY-${request.orderId}`,
+      instructions: data.instructions || 'توجه لأقرب منفذ فوري واستخدم كود الدفع الخاص بطلبك.',
       isImmediateSettlement: false
     };
   }

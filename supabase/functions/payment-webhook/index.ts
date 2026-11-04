@@ -78,16 +78,36 @@ serve(async (req: Request) => {
       const isSuccess = obj.success === true;
 
       if (orderId && isSuccess) {
-        // Update order status in Supabase securely with service_role key
-        await supabase
+        // Fetch existing order to check current status and amount (idempotency & fraud prevention)
+        const { data: existingOrder } = await supabase
           .from("orders")
-          .update({
-            payment_status: "paid",
-            gateway_provider: "paymob",
-            gateway_transaction_id: String(obj.id),
-            updated_at: new Date().toISOString()
-          })
-          .eq("id", orderId);
+          .select("id, total, payment_status")
+          .eq("id", orderId)
+          .single();
+
+        if (existingOrder) {
+          // Idempotency guard: ignore duplicate deliveries
+          if (existingOrder.payment_status === "paid") {
+            return new Response(JSON.stringify({ received: true, message: "Order already marked as paid" }), { headers: corsHeaders });
+          }
+
+          // Verify amount in cents matches order total
+          const expectedCents = Math.round(Number(existingOrder.total) * 100);
+          if (Number(obj.amount_cents) < expectedCents) {
+            return new Response(JSON.stringify({ error: "Paid amount is less than order total" }), { status: 400 });
+          }
+
+          // Update order status in Supabase securely with service_role key
+          await supabase
+            .from("orders")
+            .update({
+              payment_status: "paid",
+              gateway_provider: "paymob",
+              gateway_transaction_id: String(obj.id),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", orderId);
+        }
       }
 
       return new Response(JSON.stringify({ received: true }), { headers: corsHeaders });

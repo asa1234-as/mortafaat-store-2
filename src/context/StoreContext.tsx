@@ -241,9 +241,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentView, setCurrentView] = useState<'store' | 'admin'>('store');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('mortafaat_admin_auth') === 'true';
-  });
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -308,9 +306,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('mortafaat_chat_messages', JSON.stringify(chatMessages));
   }, [chatMessages]);
 
+  // Securely verify admin role from Supabase Auth session on mount (never trust raw localStorage)
   useEffect(() => {
-    localStorage.setItem('mortafaat_admin_auth', isAdminAuthenticated ? 'true' : 'false');
-  }, [isAdminAuthenticated]);
+    if (!isSupabaseConfigured) {
+      setIsAdminAuthenticated(false);
+      return;
+    }
+    const session = getSupabaseSession();
+    if (session?.user?.id) {
+      hasAdminRole(session.user.id).then(isAdmin => {
+        setIsAdminAuthenticated(isAdmin);
+        if (isAdmin) {
+          fetchOrdersDB().then(dbOrders => {
+            if (dbOrders.length > 0) setOrders(dbOrders);
+          }).catch(() => undefined);
+        }
+      }).catch(() => {
+        setIsAdminAuthenticated(false);
+      });
+    } else {
+      setIsAdminAuthenticated(false);
+    }
+  }, []);
 
   // Sync data with Supabase on mount
   useEffect(() => {
@@ -585,7 +602,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     notes?: string;
     paymentMethod: PaymentMethod;
   }): Promise<Order> => {
-    const orderId = `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    if (cart.length === 0) {
+      throw new Error(t("سلة المشتريات فارغة"));
+    }
+
+    // Verify stock availability
+    for (const item of cart) {
+      if (item.quantity > item.product.stockCount) {
+        throw new Error(t(`عفواً، الكمية المطلوبة من "${item.product.name}" غير متوفرة في المخزون (المتاح: ${item.product.stockCount})`));
+      }
+    }
+
+    // Generate secure cryptographically strong UUID
+    const orderId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `ord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     const shippingFee = cartSubtotal >= settings.freeShippingThreshold ? 0 : settings.shippingFee;
 
     // Check if connected to Supabase
@@ -651,9 +683,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // Local Storage fallback mode (when offline / demo)
+    const localOrderNumber = orders.length > 0
+      ? Math.max(...orders.map(o => o.orderNumber || 1000)) + 1
+      : 1001;
+
     const newOrder: Order = {
       id: orderId,
-      orderNumber: Math.floor(1000 + Math.random() * 9000),
+      orderNumber: localOrderNumber,
       userId: currentUser?.id,
       customerName: orderInfo.customerName,
       phone: orderInfo.phone,
@@ -738,31 +774,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Authentication
   const loginAdmin = async (emailOrPin: string, password?: string): Promise<boolean> => {
-    // If password provided and Supabase is configured: authenticate against Supabase Auth & Role
-    if (password && isSupabaseConfigured) {
-      try {
-        const user = await supabaseSignInAdmin(emailOrPin, password);
-        setCurrentUser(user);
-        setIsAdminAuthenticated(true);
-        setCurrentView('admin');
-        fetchOrdersDB().then(dbOrders => {
-          if (dbOrders.length > 0) setOrders(dbOrders);
-        }).catch(() => undefined);
-        return true;
-      } catch (err: any) {
-        alert(err.message || 'فشل تسجيل دخول المدير');
-        return false;
-      }
+    // Admin login strictly requires Supabase Auth with admin or owner role verification
+    if (!isSupabaseConfigured) {
+      alert(t("لوحة الإدارة تتطلب ربط Supabase وضبط VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY لتسجيل الدخول الآمن."));
+      return false;
     }
 
-    // Local / Offline Admin access (Fallback mode when Supabase is not yet configured)
-    if (emailOrPin === '1234' || emailOrPin === 'admin@mortafaat.com') {
+    if (!emailOrPin || !password) {
+      alert(t("يرجى إدخال البريد الإلكتروني وكلمة المرور للمدير."));
+      return false;
+    }
+
+    try {
+      const user = await supabaseSignInAdmin(emailOrPin, password);
+      setCurrentUser(user);
       setIsAdminAuthenticated(true);
       setCurrentView('admin');
+      fetchOrdersDB().then(dbOrders => {
+        if (dbOrders.length > 0) setOrders(dbOrders);
+      }).catch(() => undefined);
       return true;
+    } catch (err: any) {
+      alert(err.message || t("فشل تسجيل دخول المدير: تأكد من صحة البيانات ووجود صلاحية admin أو owner."));
+      return false;
     }
-
-    return false;
   };
 
   const logoutAdmin = () => {

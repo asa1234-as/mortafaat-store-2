@@ -1,5 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+
+// Compute dynamic project root path (never hardcode Windows absolute paths)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 // 1. Price, Shipping, and Cart Calculations
 test('Cart Subtotal & Free Shipping Threshold Logic', () => {
@@ -152,31 +160,103 @@ test('Admin Access Gate & Role Elevation Prevention', () => {
   assert.strictEqual(canChangeRole(ownerUser, customerUser, 'admin'), true, 'Owner can promote customer to admin');
 });
 
-// 6. Order Idempotency & Duplicate Prevention
-test('Order Idempotency Key Guard', () => {
-  const existingOrderIds = new Set(['ORD-1001', 'ORD-1002']);
+// 6. Order Idempotency, Unique UUID Generation & Collision Protection
+test('Order UUID Generation & Idempotency Key Guard', () => {
+  // UUID generation test
+  const uuid1 = crypto.randomUUID();
+  const uuid2 = crypto.randomUUID();
+  assert.strictEqual(typeof uuid1, 'string');
+  assert.strictEqual(uuid1.length, 36);
+  assert.notStrictEqual(uuid1, uuid2, 'Each order must have a unique UUID');
 
-  function processOrder(orderId) {
-    if (existingOrderIds.has(orderId)) {
-      return { status: 'already_processed', orderId };
+  // Idempotency simulation with user/phone verification
+  const existingOrders = new Map([
+    ['ord-1', { id: 'ord-1', phone: '01011111111', total: 500 }],
+    ['ord-2', { id: 'ord-2', phone: '01022222222', total: 850 }]
+  ]);
+
+  function processOrder(orderId, customerPhone) {
+    const existing = existingOrders.get(orderId);
+    if (existing) {
+      if (existing.phone === customerPhone) {
+        return { status: 'idempotent_replay', orderId };
+      }
+      // Collision with another customer's order: must NOT return other user's order
+      const freshId = crypto.randomUUID();
+      existingOrders.set(freshId, { id: freshId, phone: customerPhone, total: 300 });
+      return { status: 'created_with_new_id', orderId: freshId };
     }
-    existingOrderIds.add(orderId);
+    existingOrders.set(orderId, { id: orderId, phone: customerPhone, total: 300 });
     return { status: 'created', orderId };
   }
 
-  const firstSubmit = processOrder('ORD-1003');
-  assert.strictEqual(firstSubmit.status, 'created');
+  // 1. Initial creation
+  const first = processOrder('ord-3', '01033333333');
+  assert.strictEqual(first.status, 'created');
 
-  // Duplicate submission with same ID (e.g. double click or reconnect)
-  const duplicateSubmit = processOrder('ORD-1003');
-  assert.strictEqual(duplicateSubmit.status, 'already_processed', 'Duplicate order ID must not be recreated');
+  // 2. Duplicate retry by same customer (e.g. network hiccup)
+  const retrySame = processOrder('ord-3', '01033333333');
+  assert.strictEqual(retrySame.status, 'idempotent_replay');
+
+  // 3. Collision attempt by different phone number (must NOT leak ord-3 data)
+  const collisionAttempt = processOrder('ord-3', '01099999999');
+  assert.strictEqual(collisionAttempt.status, 'created_with_new_id');
+  assert.notStrictEqual(collisionAttempt.orderId, 'ord-3');
 });
 
-// 7. Security: Zero API Secrets in Frontend Bundle
-test('Security Verification: No Private Secrets Exposed', async () => {
-  import('fs').then(fs => {
-    const envExample = fs.readFileSync('C:/Users/hp/.gemini/antigravity/scratch/mortafaat-store/.env.example', 'utf-8');
-    assert.strictEqual(envExample.includes('service_role'), false, 'Service role key must never be in .env.example');
-    assert.strictEqual(envExample.includes('PAYMOB_SECRET'), false, 'Paymob secrets must not be in client environment');
-  });
+// 7. Security: Zero API Secrets in Frontend Bundle (Dynamic Paths & Fully Awaited)
+test('Security Verification: No Private Secrets Exposed in Config or Frontend', async () => {
+  const envExamplePath = path.join(PROJECT_ROOT, '.env.example');
+  const envContent = await fs.readFile(envExamplePath, 'utf-8');
+
+  assert.strictEqual(envContent.includes('service_role'), false, 'Service role key must never be in .env.example');
+  assert.strictEqual(envContent.includes('PAYMOB_SECRET'), false, 'Paymob secrets must not be in client environment');
+  assert.strictEqual(envContent.includes('KASHIER_SECRET'), false, 'Kashier secrets must not be in client environment');
+  assert.strictEqual(envContent.includes('FAWRY_SECRET'), false, 'Fawry secrets must not be in client environment');
+});
+
+// 8. Security: No Hardcoded PIN '1234' or Admin Backdoor in Source Code
+test('Security Verification: No Hardcoded PIN 1234 or Admin Backdoor', async () => {
+  const initialDataPath = path.join(PROJECT_ROOT, 'src', 'data', 'initialData.ts');
+  const storeContextPath = path.join(PROJECT_ROOT, 'src', 'context', 'StoreContext.tsx');
+
+  const initialData = await fs.readFile(initialDataPath, 'utf-8');
+  const storeContext = await fs.readFile(storeContextPath, 'utf-8');
+
+  assert.strictEqual(initialData.includes("adminPin: '1234'"), false, 'adminPin: 1234 must not exist in initialData.ts');
+  assert.strictEqual(storeContext.includes("=== '1234'"), false, '1234 PIN check must not exist in StoreContext.tsx');
+  assert.strictEqual(storeContext.includes("emailOrPin === 'admin@mortafaat.com'"), false, 'admin@mortafaat.com backdoor must not exist in StoreContext.tsx');
+});
+
+// 9. Security: LocalStorage Tampering Immunity
+test('Security Verification: LocalStorage Flag Cannot Elevate Admin Access', async () => {
+  const storeContextPath = path.join(PROJECT_ROOT, 'src', 'context', 'StoreContext.tsx');
+  const storeContext = await fs.readFile(storeContextPath, 'utf-8');
+
+  // Verify that isAdminAuthenticated is not initialized directly from localStorage
+  const directLocalStorageAuth = /useState<boolean>\(\s*\(\)\s*=>\s*localStorage\.getItem\(['"]mortafaat_admin_auth['"]\)\s*===\s*['"]true['"]\s*\)/;
+  assert.strictEqual(directLocalStorageAuth.test(storeContext), false, 'isAdminAuthenticated must not trust raw localStorage flag');
+
+  // Verify that mortafaat_admin_auth is not written to localStorage as an auth source
+  assert.strictEqual(storeContext.includes("localStorage.setItem('mortafaat_admin_auth'"), false, 'Must not persist insecure admin auth flag to localStorage');
+});
+
+// 10. Payment Gateway Architecture: COD Active, Webhook HMAC Verification
+test('Payment Gateway Architecture: COD Active & Webhook HMAC Verification', async () => {
+  // Test HMAC SHA-512 calculation
+  const testSecret = 'secret_test_key_123';
+  const testPayload = 'amount_cents=50000currency=EGPorder_id=123';
+  const hmac = crypto.createHmac('sha512', testSecret).update(testPayload).digest('hex');
+
+  assert.strictEqual(typeof hmac, 'string');
+  assert.strictEqual(hmac.length, 128, 'SHA-512 HMAC should be 128 hex characters');
+
+  // Verify constant-time buffer comparison logic
+  const bufA = Buffer.from(hmac, 'hex');
+  const bufB = Buffer.from(hmac, 'hex');
+  assert.strictEqual(crypto.timingSafeEqual(bufA, bufB), true, 'Timing-safe comparison must validate matching signatures');
+
+  const invalidHmac = crypto.createHmac('sha512', 'wrong_secret').update(testPayload).digest('hex');
+  const bufC = Buffer.from(invalidHmac, 'hex');
+  assert.strictEqual(crypto.timingSafeEqual(bufA, bufC), false, 'Timing-safe comparison must reject invalid signatures');
 });

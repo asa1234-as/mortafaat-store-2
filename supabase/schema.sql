@@ -490,24 +490,37 @@ begin
     raise exception 'سلة المشتريات فارغة';
   end if;
 
-  -- Set order ID
-  v_order_id := coalesce(nullif(trim(p_order_id), ''), 'ORD-' || floor(1000 + random() * 9000)::text);
+  -- Set cryptographically strong unique order ID
+  v_order_id := coalesce(nullif(trim(p_order_id), ''), 'ord_' || gen_random_uuid()::text);
 
   -- Check if order with this exact ID already exists (idempotency guard)
   if exists (select 1 from public.orders where id = v_order_id) then
-    select id, order_number, total, subtotal, shipping_fee, discount_amount
-    into v_order_id, v_order_number, v_total, v_subtotal, v_shipping, v_discount
-    from public.orders where id = v_order_id;
-    return jsonb_build_object(
-      'success', true,
-      'order_id', v_order_id,
-      'order_number', v_order_number,
-      'total', v_total,
-      'subtotal', v_subtotal,
-      'shipping_fee', v_shipping,
-      'discount_amount', v_discount,
-      'message', 'تم استرجاع الطلب المسجل مسبقاً'
-    );
+    -- Verify this order belongs to the same caller (by user_id or phone), preventing collision data leaks
+    if exists (
+      select 1 from public.orders 
+      where id = v_order_id 
+        and (
+          (v_user_id is not null and user_id = v_user_id) 
+          or (phone = p_phone and customer_name = p_customer_name)
+        )
+    ) then
+      select id, order_number, total, subtotal, shipping_fee, discount_amount
+      into v_order_id, v_order_number, v_total, v_subtotal, v_shipping, v_discount
+      from public.orders where id = v_order_id;
+      return jsonb_build_object(
+        'success', true,
+        'order_id', v_order_id,
+        'order_number', v_order_number,
+        'total', v_total,
+        'subtotal', v_subtotal,
+        'shipping_fee', v_shipping,
+        'discount_amount', v_discount,
+        'message', 'تم استرجاع طلبك المسجل مسبقاً'
+      );
+    else
+      -- ID collision with a different customer's order: generate fresh UUID
+      v_order_id := 'ord_' || gen_random_uuid()::text;
+    end if;
   end if;
 
   -- Verify each item, lock product row FOR UPDATE to prevent race overselling

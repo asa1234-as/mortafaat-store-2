@@ -107,6 +107,7 @@ export const CheckoutModal: React.FC = () => {
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProcessing) return;
     setSubmitError(null);
 
     const cleanName = customerName.trim();

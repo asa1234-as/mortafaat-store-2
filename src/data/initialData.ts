@@ -256,16 +256,12 @@ export const INITIAL_SETTINGS: StoreSettings = {
   shippingFee: 50,
   freeShippingThreshold: 1000,
   announcementText: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + دفع عند الاستلام مع المعاينة قبل الدفع! 🔥',
-  adminPin: '1234',
   sliderIntervalSeconds: 5,
 
   // Dynamic Gateway (Disabled by default until merchant gets approved by Fawry or Kashier)
   isOnlinePaymentEnabled: false,
   onlineGatewayName: 'الدفع الإلكتروني (كروت ومحافظ)',
   onlineGatewayLogoUrl: '',
-  onlineGatewayMerchantId: '',
-  onlineGatewayApiKey: '',
-  onlineGatewaySecretKey: '',
   onlineGatewayEnvironment: 'live',
   onlineGatewayNotice: 'الدفع الإلكتروني عبر بوابة الدفع المعتمدة (سيتم تفعيلها فور صدور موافقة البنك).',
 

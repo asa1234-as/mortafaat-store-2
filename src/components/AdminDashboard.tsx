@@ -1829,7 +1829,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="p-4 rounded-2xl bg-amber-50 dark:bg-zinc-800 border border-amber-200 dark:border-zinc-700 space-y-2 text-xs">
                 <div className="flex justify-between font-bold">
                   <span>{t("الحساب الإداري الحالي:")}</span>
-                  <span className="font-mono text-black dark:text-white">{currentUser?.email || 'admin@mortafaat.com'}</span>
+                  <span className="font-mono text-black dark:text-white">{currentUser?.email || t("غير مسجل")}</span>
                 </div>
                 <div className="flex justify-between text-gray-600 dark:text-gray-300">
                   <span>{t("الصلاحية الموثقة:")}</span>
