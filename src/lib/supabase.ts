@@ -652,15 +652,19 @@ export async function updatePaymentStatusDB(orderId: string, paymentStatus: Orde
 // ==========================================
 
 export async function uploadProductImage(file: File): Promise<string> {
+  return uploadMediaFile(file, 'product-images');
+}
+
+export async function uploadMediaFile(file: File, bucket = 'product-images'): Promise<string> {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase غير مهيأ لرفع الصور');
+    throw new Error('Supabase غير مهيأ لرفع الملفات');
   }
 
   const url = baseUrl();
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `${Date.now()}-${cleanName}`;
 
-  const res = await fetch(`${url}/storage/v1/object/product-images/${path}`, {
+  const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_ANON_KEY || '',
@@ -672,10 +676,10 @@ export async function uploadProductImage(file: File): Promise<string> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || 'فشل رفع الصورة إلى Supabase Storage. تأكد من صلاحية المدير.');
+    throw new Error(err.message || 'فشل رفع الملف إلى Supabase Storage. تأكد من صلاحية المدير.');
   }
 
-  return `${url}/storage/v1/object/public/product-images/${path}`;
+  return `${url}/storage/v1/object/public/${bucket}/${path}`;
 }
 
 // ==========================================

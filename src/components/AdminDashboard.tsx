@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import { Product, Order, Coupon, BotKnowledgeRule, HeroSlide, Category, StoreSettings, StoreTrustBadge } from '../types';
 import { t } from '../i18n';
-import { isSupabaseConfigured, uploadProductImage } from '../lib/supabase';
+import { isSupabaseConfigured, uploadProductImage, uploadMediaFile } from '../lib/supabase';
 import { AVAILABLE_CATEGORY_ICONS, renderDynamicIcon } from '../lib/iconMap';
 import { 
   Package, 
@@ -105,6 +105,7 @@ export const AdminDashboard: React.FC = () => {
   const [prodFeatures, setProdFeatures] = useState('');
   const [prodFeaturesEn, setProdFeaturesEn] = useState('');
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
+  const [isUploadingProductVideo, setIsUploadingProductVideo] = useState(false);
 
   // Slide Form State
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
@@ -118,6 +119,7 @@ export const AdminDashboard: React.FC = () => {
   const [slideCtaEn, setSlideCtaEn] = useState('Shop Now');
   const [slideImage, setSlideImage] = useState('');
   const [slideVideoUrl, setSlideVideoUrl] = useState('');
+  const [isUploadingSlideVideo, setIsUploadingSlideVideo] = useState(false);
   const [slideCategory, setSlideCategory] = useState('all');
 
   // Category Edit State
@@ -319,6 +321,56 @@ export const AdminDashboard: React.FC = () => {
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProductVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingProductVideo(true);
+    try {
+      if (isSupabaseConfigured) {
+        const publicUrl = await uploadMediaFile(file, 'product-images');
+        setProdVideoUrl(publicUrl);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setProdVideoUrl(reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err: any) {
+      alert(err.message || t("فشل رفع ملف الفيديو"));
+    } finally {
+      setIsUploadingProductVideo(false);
+    }
+  };
+
+  const handleSlideVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingSlideVideo(true);
+    try {
+      if (isSupabaseConfigured) {
+        const publicUrl = await uploadMediaFile(file, 'product-images');
+        setSlideVideoUrl(publicUrl);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setSlideVideoUrl(reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err: any) {
+      alert(err.message || t("فشل رفع ملف الفيديو"));
+    } finally {
+      setIsUploadingSlideVideo(false);
     }
   };
 
@@ -1033,16 +1085,21 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="font-bold block mb-1">{t("رابط فيديو البانر (اختياري - MP4 / WebM):")}</label>
+                  <label className="font-bold block mb-1">{t("فيديو البانر (اختياري - رابط أو ارفع من جهازك إلى السحابة):")}</label>
                   <div className="flex gap-2">
                     <input
-                      type="url"
+                      type="text"
                       placeholder="https://... (mp4 / webm)"
                       value={slideVideoUrl}
                       onChange={(e) => setSlideVideoUrl(e.target.value)}
                       className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs"
                       dir="ltr"
                     />
+                    <label className="px-3.5 py-2 rounded-xl bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 font-bold cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-700 transition-colors flex items-center gap-1.5 flex-shrink-0 text-xs">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isUploadingSlideVideo ? t("جاري الرفع...") : t("رفع فيديو")}</span>
+                      <input type="file" accept="video/mp4,video/webm,video/*" onChange={handleSlideVideoUpload} disabled={isUploadingSlideVideo} className="hidden" />
+                    </label>
                     {slideVideoUrl && (
                       <button
                         type="button"
@@ -2456,20 +2513,25 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'YOUR_NEW_ADMIN@EMAIL.COM');
                 </div>
               </div>
 
-              {/* Product Video URL (Optional) */}
+              {/* Product Video URL or Upload */}
               <div>
                 <label className="font-bold block mb-1">
-                  {t("فيديو المنتج (اختياري - رابط فيديو MP4 / WebM / YouTube):")}
+                  {t("فيديو المنتج (اختياري - رابط أو ارفع من جهازك إلى السحابة):")}
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="url"
+                    type="text"
                     placeholder="https://... (mp4 / webm / youtube)"
                     value={prodVideoUrl}
                     onChange={(e) => setProdVideoUrl(e.target.value)}
                     className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs"
                     dir="ltr"
                   />
+                  <label className="px-3.5 py-1.5 rounded-xl bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 font-bold cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-700 transition-colors flex items-center gap-1.5 flex-shrink-0 text-xs">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isUploadingProductVideo ? t("جاري الرفع...") : t("رفع فيديو")}</span>
+                    <input type="file" accept="video/mp4,video/webm,video/*" onChange={handleProductVideoUpload} disabled={isUploadingProductVideo} className="hidden" />
+                  </label>
                   {prodVideoUrl && (
                     <button
                       type="button"
