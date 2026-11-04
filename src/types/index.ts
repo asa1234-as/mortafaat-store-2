@@ -14,11 +14,14 @@ export interface Product {
   id: string;
   sku?: string;
   name: string;
+  nameAr?: string;
   nameEn: string;
   category: string;
   price: number;
   originalPrice?: number;
   description: string;
+  descriptionAr?: string;
+  descriptionEn?: string;
   images: string[];
   videoUrl?: string;
   inStock: boolean;
@@ -27,6 +30,8 @@ export interface Product {
   reviewsCount: number;
   reviews?: ProductReview[];
   features: string[];
+  featuresAr?: string[];
+  featuresEn?: string[];
   sizes?: string[];
   colors?: { name: string; hex: string }[];
   isFeatured?: boolean;
@@ -101,11 +106,21 @@ export interface User {
 export interface HeroSlide {
   id: string;
   title: string;
+  titleAr?: string;
+  titleEn?: string;
   subtitle: string;
+  subtitleAr?: string;
+  subtitleEn?: string;
   tag: string;
+  tagAr?: string;
+  tagEn?: string;
   ctaText: string;
+  ctaTextAr?: string;
+  ctaTextEn?: string;
   targetCategory: string;
   image: string;
+  videoUrl?: string;
+  mediaType?: 'image' | 'video' | 'both';
   bgGradient?: string;
   isActive?: boolean;
 }
@@ -115,7 +130,18 @@ export interface BotKnowledgeRule {
   title: string;
   keywords: string[];
   replyText: string;
+  replyTextAr?: string;
+  replyTextEn?: string;
   isActive: boolean;
+}
+
+export interface StoreTrustBadge {
+  id: string;
+  icon: string;
+  titleAr: string;
+  titleEn: string;
+  descAr?: string;
+  descEn?: string;
 }
 
 export interface StoreSettings {
@@ -126,9 +152,15 @@ export interface StoreSettings {
   shippingFee: number;
   freeShippingThreshold: number;
   announcementText: string;
+  announcementTextAr?: string;
+  announcementTextEn?: string;
 
-  // Hero Slider timing
+  // Hero Slider timing & dimming overlay opacity (0 to 1)
   sliderIntervalSeconds: number;
+  heroOverlayOpacity?: number;
+
+  // Store Trust Badges below Hero
+  trustBadges?: StoreTrustBadge[];
 
   // Dynamic Payment Gateway Configuration
   isOnlinePaymentEnabled: boolean;
@@ -137,10 +169,16 @@ export interface StoreSettings {
   onlineGatewayEnvironment: 'live' | 'test';
   onlineGatewayNotice: string;
 
-  // Store Policies
+  // Store Policies (Bilingual)
   returnPolicyText: string;
+  returnPolicyTextAr?: string;
+  returnPolicyTextEn?: string;
   shippingPolicyText: string;
+  shippingPolicyTextAr?: string;
+  shippingPolicyTextEn?: string;
   privacyPolicyText: string;
+  privacyPolicyTextAr?: string;
+  privacyPolicyTextEn?: string;
 }
 
 export interface ChatMessage {

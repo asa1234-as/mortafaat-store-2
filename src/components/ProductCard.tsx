@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { useStore } from '../context/StoreContext';
-import { ShoppingCart, Star, Zap, Eye, Play } from 'lucide-react';
+import { ShoppingCart, Star, Zap } from 'lucide-react';
 
 import { t } from '../i18n';
 interface ProductCardProps {
@@ -20,11 +20,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Switch to another image on hover/touch (cycles randomly or sequentially)
+  // Switch to another image on hover/touch smoothly
   const handleImageSwitch = () => {
     if (product.images.length > 1) {
       setCurrentImageIndex((prev) => (prev + 1) % product.images.length);
     }
+  };
+
+  const handleImageLeave = () => {
+    setCurrentImageIndex(0);
   };
 
   const handleBuyNow = (e: React.MouseEvent) => {
@@ -43,6 +47,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
+  const displayImages = product.images.length > 0 ? product.images : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80'];
+
   return (
     <div 
       onClick={() => setSelectedProduct(product)}
@@ -51,31 +57,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Product Image Box */}
       <div 
         onMouseEnter={handleImageSwitch}
+        onMouseLeave={handleImageLeave}
         onTouchStart={handleImageSwitch}
         className="relative aspect-square w-full overflow-hidden bg-gray-100 dark:bg-zinc-800"
       >
-        <img
-          src={product.images[currentImageIndex] || product.images[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80'}
-          alt={product.name}
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-all duration-500"
-          loading="lazy"
-        />
-
-        {/* Video badge if video is present */}
-        {product.videoUrl && (
-          <span className="absolute bottom-2.5 right-2.5 bg-black/75 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Play className="w-3 h-3 fill-white" />
-            <span>{t("فيديو")}</span>
-          </span>
-        )}
+        {displayImages.map((imgUrl, i) => (
+          <img
+            key={i}
+            src={imgUrl}
+            alt={language === 'ar' ? product.name : (product.nameEn || product.name)}
+            className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ease-in-out ${
+              i === currentImageIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+            loading="lazy"
+          />
+        ))}
 
         {/* Multiple images indicator */}
-        {product.images.length > 1 && (
-          <div className="absolute bottom-2.5 left-2.5 flex gap-1">
-            {product.images.map((_, i) => (
+        {displayImages.length > 1 && (
+          <div className="absolute bottom-2.5 left-2.5 flex gap-1 z-10 pointer-events-none">
+            {displayImages.map((_, i) => (
               <span 
                 key={i} 
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                   i === currentImageIndex ? 'bg-brand-gold w-3' : 'bg-black/40'
                 }`} 
               />
@@ -85,33 +89,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* Discount Badge */}
         {discountPercent > 0 && (
-          <span className="absolute top-2.5 right-2.5 bg-red-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-md">
+          <span className="absolute top-2.5 right-2.5 z-10 bg-red-600 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-md pointer-events-none">
             {t("خصم")} {discountPercent}%
           </span>
         )}
 
         {/* Out of Stock Badge */}
         {!product.inStock && (
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center">
+          <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-xs flex items-center justify-center pointer-events-none">
             <span className="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
               {t("نفذت الكمية")}
             </span>
           </div>
         )}
-
-        {/* Quick View Button */}
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedProduct(product);
-            }}
-            className="w-10 h-10 rounded-full bg-white text-black hover:bg-brand-gold flex items-center justify-center shadow-lg transition-colors"
-            title={t("معاينة سريعة")}
-          >
-            <Eye className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
       {/* Product Info */}

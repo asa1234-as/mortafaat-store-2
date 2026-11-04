@@ -260,3 +260,52 @@ test('Payment Gateway Architecture: COD Active & Webhook HMAC Verification', asy
   const bufC = Buffer.from(invalidHmac, 'hex');
   assert.strictEqual(crypto.timingSafeEqual(bufA, bufC), false, 'Timing-safe comparison must reject invalid signatures');
 });
+
+// 11. Bilingual Language Fallback Resolution
+test('Bilingual Language Fallback Resolution Logic', () => {
+  const productWithEn = {
+    name: 'ساعة يد ألترا',
+    nameAr: 'ساعة يد ألترا',
+    nameEn: 'Ultra Wristwatch'
+  };
+
+  const productWithoutEn = {
+    name: 'منتج محلي',
+    nameAr: 'منتج محلي'
+  };
+
+  // Helper simulating component language selection
+  const resolveName = (prod, lang) => {
+    if (lang === 'en') {
+      return prod.nameEn || prod.nameAr || prod.name;
+    }
+    return prod.nameAr || prod.name;
+  };
+
+  assert.strictEqual(resolveName(productWithEn, 'ar'), 'ساعة يد ألترا');
+  assert.strictEqual(resolveName(productWithEn, 'en'), 'Ultra Wristwatch');
+  assert.strictEqual(resolveName(productWithoutEn, 'en'), 'منتج محلي', 'Fallback to Arabic name if English not provided');
+});
+
+// 12. Public Build Guard Verification
+test('Public Build Admin & Download Link Gate Verification', async () => {
+  const headerPath = path.join(PROJECT_ROOT, 'src', 'components', 'Header.tsx');
+  const appPath = path.join(PROJECT_ROOT, 'src', 'App.tsx');
+
+  const headerContent = await fs.readFile(headerPath, 'utf-8');
+  const appContent = await fs.readFile(appPath, 'utf-8');
+
+  // Verify Header gates the ZIP download and admin button on VITE_PUBLIC_BUILD
+  assert.strictEqual(
+    headerContent.includes("!(import.meta.env.VITE_PUBLIC_BUILD === 'true' || import.meta.env.MODE === 'public')"),
+    true,
+    'Header must hide admin & zip buttons when public build is active'
+  );
+
+  // Verify App gates currentView === admin on isPublicBuild
+  assert.strictEqual(
+    appContent.includes("!isPublicBuild && currentView === 'admin'"),
+    true,
+    'App must prevent admin view when public build is active'
+  );
+});

@@ -266,20 +266,27 @@ export const ProductDetailModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Description */}
+              {/* Description (Bilingual) */}
               <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-                {t(selectedProduct.description)}
+                {language === 'ar' 
+                  ? (selectedProduct.descriptionAr || selectedProduct.description)
+                  : (selectedProduct.descriptionEn || selectedProduct.descriptionAr || selectedProduct.description)}
               </p>
 
-              {/* Features list */}
-              {selectedProduct.features && selectedProduct.features.length > 0 && (
+              {/* Features list (Bilingual) */}
+              {((language === 'en' && selectedProduct.featuresEn && selectedProduct.featuresEn.length > 0) 
+                ? selectedProduct.featuresEn 
+                : (selectedProduct.featuresAr || selectedProduct.features || [])).length > 0 && (
                 <div className="space-y-1.5 mb-4">
                   <span className="text-xs font-bold text-gray-900 dark:text-gray-100 block">{t("أبرز المميزات:")}</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {selectedProduct.features.map((feat, i) => (
+                    {((language === 'en' && selectedProduct.featuresEn && selectedProduct.featuresEn.length > 0)
+                      ? selectedProduct.featuresEn
+                      : (selectedProduct.featuresAr || selectedProduct.features || [])
+                    ).map((feat, i) => (
                       <div key={i} className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300">
                         <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                        <span>{t(feat)}</span>
+                        <span>{feat}</span>
                       </div>
                     ))}
                   </div>

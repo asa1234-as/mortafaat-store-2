@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Product, Order, Coupon, BotKnowledgeRule, HeroSlide, Category, StoreSettings } from '../types';
+import { Product, Order, Coupon, BotKnowledgeRule, HeroSlide, Category, StoreSettings, StoreTrustBadge } from '../types';
 import { t } from '../i18n';
 import { isSupabaseConfigured, uploadProductImage } from '../lib/supabase';
+import { AVAILABLE_CATEGORY_ICONS, renderDynamicIcon } from '../lib/iconMap';
 import { 
   Package, 
   ShoppingCart, 
@@ -39,7 +40,8 @@ import {
   MessageCircle,
   ExternalLink,
   ShieldAlert,
-  Printer
+  Printer,
+  X
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -62,6 +64,7 @@ export const AdminDashboard: React.FC = () => {
     deleteCoupon,
     toggleCoupon,
     addBotRule,
+    updateBotRule,
     deleteBotRule,
     toggleBotRule,
     addSlide,
@@ -95,28 +98,37 @@ export const AdminDashboard: React.FC = () => {
   const [prodOriginalPrice, setProdOriginalPrice] = useState<number | undefined>(undefined);
   const [prodStock, setProdStock] = useState<number>(10);
   const [prodDescription, setProdDescription] = useState('');
+  const [prodDescriptionEn, setProdDescriptionEn] = useState('');
   const [prodImages, setProdImages] = useState<string[]>([]);
   const [prodNewImageInput, setProdNewImageInput] = useState('');
   const [prodVideoUrl, setProdVideoUrl] = useState('');
   const [prodFeatures, setProdFeatures] = useState('');
+  const [prodFeaturesEn, setProdFeaturesEn] = useState('');
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
 
   // Slide Form State
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
   const [slideTitle, setSlideTitle] = useState('');
+  const [slideTitleEn, setSlideTitleEn] = useState('');
   const [slideSubtitle, setSlideSubtitle] = useState('');
+  const [slideSubtitleEn, setSlideSubtitleEn] = useState('');
   const [slideTag, setSlideTag] = useState('');
+  const [slideTagEn, setSlideTagEn] = useState('');
   const [slideCta, setSlideCta] = useState(t("تسوق الآن"));
+  const [slideCtaEn, setSlideCtaEn] = useState('Shop Now');
   const [slideImage, setSlideImage] = useState('');
+  const [slideVideoUrl, setSlideVideoUrl] = useState('');
   const [slideCategory, setSlideCategory] = useState('all');
 
   // Category Edit State
   const [newCatNameAr, setNewCatNameAr] = useState('');
   const [newCatNameEn, setNewCatNameEn] = useState('');
   const [newCatId, setNewCatId] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('Sparkles');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCatNameAr, setEditCatNameAr] = useState('');
   const [editCatNameEn, setEditCatNameEn] = useState('');
+  const [editCatIcon, setEditCatIcon] = useState('Sparkles');
 
   // Orders State
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
@@ -130,9 +142,18 @@ export const AdminDashboard: React.FC = () => {
   const [adminReplyText, setAdminReplyText] = useState('');
 
   // Bot Knowledge Rule State
+  const [editingBotRule, setEditingBotRule] = useState<BotKnowledgeRule | null>(null);
   const [newRuleTitle, setNewRuleTitle] = useState('');
   const [newRuleKeywords, setNewRuleKeywords] = useState('');
   const [newRuleReply, setNewRuleReply] = useState('');
+  const [newRuleReplyEn, setNewRuleReplyEn] = useState('');
+
+  // Trust Badges Form State
+  const [newBadgeTitleAr, setNewBadgeTitleAr] = useState('');
+  const [newBadgeTitleEn, setNewBadgeTitleEn] = useState('');
+  const [newBadgeDescAr, setNewBadgeDescAr] = useState('');
+  const [newBadgeDescEn, setNewBadgeDescEn] = useState('');
+  const [newBadgeIcon, setNewBadgeIcon] = useState('ShieldCheck');
 
   // Coupon State
   const [newCouponCode, setNewCouponCode] = useState('');
@@ -223,26 +244,30 @@ export const AdminDashboard: React.FC = () => {
     setProdOriginalPrice(undefined);
     setProdStock(20);
     setProdDescription('');
+    setProdDescriptionEn('');
     setProdImages([]);
     setProdNewImageInput('');
     setProdVideoUrl('');
     setProdFeatures('');
+    setProdFeaturesEn('');
     setIsAddModalOpen(true);
   };
 
   const openEditProduct = (prod: Product) => {
     setEditingProduct(prod);
-    setProdName(prod.name);
-    setProdNameEn(prod.nameEn);
+    setProdName(prod.nameAr || prod.name);
+    setProdNameEn(prod.nameEn || '');
     setProdCategory(prod.category);
     setProdPrice(prod.price);
     setProdOriginalPrice(prod.originalPrice);
     setProdStock(prod.stockCount);
-    setProdDescription(prod.description);
+    setProdDescription(prod.descriptionAr || prod.description);
+    setProdDescriptionEn(prod.descriptionEn || '');
     setProdImages(prod.images || []);
     setProdNewImageInput('');
     setProdVideoUrl(prod.videoUrl || '');
-    setProdFeatures(prod.features ? prod.features.join('\n') : '');
+    setProdFeatures(prod.featuresAr ? prod.featuresAr.join('\n') : (prod.features ? prod.features.join('\n') : ''));
+    setProdFeaturesEn(prod.featuresEn ? prod.featuresEn.join('\n') : '');
     setIsAddModalOpen(true);
   };
 
@@ -305,11 +330,13 @@ export const AdminDashboard: React.FC = () => {
     }
 
     const featuresList = prodFeatures.split('\n').map(f => f.trim()).filter(Boolean);
+    const featuresEnList = prodFeaturesEn.split('\n').map(f => f.trim()).filter(Boolean);
     const finalImages = prodImages.length > 0 ? prodImages : ['/logo.png'];
 
     if (editingProduct) {
       updateProduct(editingProduct.id, {
         name: prodName.trim(),
+        nameAr: prodName.trim(),
         nameEn: prodNameEn.trim() || prodName.trim(),
         category: prodCategory,
         price: Number(prodPrice),
@@ -317,13 +344,18 @@ export const AdminDashboard: React.FC = () => {
         stockCount: Number(prodStock),
         inStock: Number(prodStock) > 0,
         description: prodDescription,
+        descriptionAr: prodDescription,
+        descriptionEn: prodDescriptionEn.trim() || undefined,
         images: finalImages,
         videoUrl: prodVideoUrl.trim() || undefined,
-        features: featuresList
+        features: featuresList,
+        featuresAr: featuresList,
+        featuresEn: featuresEnList.length > 0 ? featuresEnList : undefined
       });
     } else {
       addProduct({
         name: prodName.trim(),
+        nameAr: prodName.trim(),
         nameEn: prodNameEn.trim() || prodName.trim(),
         category: prodCategory,
         price: Number(prodPrice),
@@ -331,9 +363,13 @@ export const AdminDashboard: React.FC = () => {
         stockCount: Number(prodStock),
         inStock: Number(prodStock) > 0,
         description: prodDescription,
+        descriptionAr: prodDescription,
+        descriptionEn: prodDescriptionEn.trim() || undefined,
         images: finalImages,
         videoUrl: prodVideoUrl.trim() || undefined,
         features: featuresList,
+        featuresAr: featuresList,
+        featuresEn: featuresEnList.length > 0 ? featuresEnList : undefined,
         rating: 0,
         reviewsCount: 0,
         isFeatured: true
@@ -360,41 +396,57 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
+    const slideData = {
+      title: slideTitle,
+      titleAr: slideTitle,
+      titleEn: slideTitleEn.trim() || undefined,
+      subtitle: slideSubtitle,
+      subtitleAr: slideSubtitle,
+      subtitleEn: slideSubtitleEn.trim() || undefined,
+      tag: slideTag || t("عرض خاص"),
+      tagAr: slideTag || t("عرض خاص"),
+      tagEn: slideTagEn.trim() || undefined,
+      ctaText: slideCta || t("تسوق الآن"),
+      ctaTextAr: slideCta || t("تسوق الآن"),
+      ctaTextEn: slideCtaEn.trim() || undefined,
+      targetCategory: slideCategory || 'all',
+      image: slideImage,
+      videoUrl: slideVideoUrl.trim() || undefined,
+      mediaType: (slideVideoUrl.trim() ? 'video' : 'image') as 'image' | 'video'
+    };
+
     if (editingSlide) {
-      updateSlide(editingSlide.id, {
-        title: slideTitle,
-        subtitle: slideSubtitle,
-        tag: slideTag || t("عرض خاص"),
-        ctaText: slideCta || t("تسوق الآن"),
-        targetCategory: slideCategory || 'all',
-        image: slideImage
-      });
+      updateSlide(editingSlide.id, slideData);
       setEditingSlide(null);
     } else {
-      addSlide({
-        title: slideTitle,
-        subtitle: slideSubtitle,
-        tag: slideTag || t("عرض خاص"),
-        ctaText: slideCta || t("تسوق الآن"),
-        targetCategory: slideCategory || 'all',
-        image: slideImage
-      });
+      addSlide(slideData);
     }
 
     setSlideTitle('');
+    setSlideTitleEn('');
     setSlideSubtitle('');
+    setSlideSubtitleEn('');
     setSlideTag('');
+    setSlideTagEn('');
+    setSlideCta(t("تسوق الآن"));
+    setSlideCtaEn('Shop Now');
     setSlideImage('');
+    setSlideVideoUrl('');
     triggerSaveFeedback();
   };
 
   const handleEditSlideClick = (slide: HeroSlide) => {
     setEditingSlide(slide);
-    setSlideTitle(slide.title);
-    setSlideSubtitle(slide.subtitle);
-    setSlideTag(slide.tag);
-    setSlideCta(slide.ctaText);
+    setSlideTitle(slide.titleAr || slide.title);
+    setSlideTitleEn(slide.titleEn || '');
+    setSlideSubtitle(slide.subtitleAr || slide.subtitle);
+    setSlideSubtitleEn(slide.subtitleEn || '');
+    setSlideTag(slide.tagAr || slide.tag);
+    setSlideTagEn(slide.tagEn || '');
+    setSlideCta(slide.ctaTextAr || slide.ctaText);
+    setSlideCtaEn(slide.ctaTextEn || 'Shop Now');
     setSlideImage(slide.image);
+    setSlideVideoUrl(slide.videoUrl || '');
     setSlideCategory(slide.targetCategory || 'all');
   };
 
@@ -406,12 +458,13 @@ export const AdminDashboard: React.FC = () => {
       id: catId,
       nameAr: newCatNameAr,
       nameEn: newCatNameEn || newCatNameAr,
-      icon: 'Layers',
+      icon: newCatIcon || 'Layers',
       itemCount: 0
     });
     setNewCatNameAr('');
     setNewCatNameEn('');
     setNewCatId('');
+    setNewCatIcon('Sparkles');
     triggerSaveFeedback();
   };
 
@@ -420,7 +473,8 @@ export const AdminDashboard: React.FC = () => {
     if (!editingCategory || !editCatNameAr) return;
     updateCategory(editingCategory.id, {
       nameAr: editCatNameAr,
-      nameEn: editCatNameEn || editCatNameAr
+      nameEn: editCatNameEn || editCatNameAr,
+      icon: editCatIcon || editingCategory.icon
     });
     setEditingCategory(null);
     triggerSaveFeedback();
@@ -433,20 +487,92 @@ export const AdminDashboard: React.FC = () => {
     setAdminReplyText('');
   };
 
-  const handleAddBotRule = (e: React.FormEvent) => {
+  const handleSaveBotRule = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRuleTitle.trim() || !newRuleKeywords.trim() || !newRuleReply.trim()) return;
     const kwArray = newRuleKeywords.split(',').map(k => k.trim()).filter(Boolean);
-    addBotRule({
-      title: newRuleTitle,
-      keywords: kwArray,
-      replyText: newRuleReply,
-      isActive: true
-    });
+    
+    if (editingBotRule) {
+      updateBotRule(editingBotRule.id, {
+        title: newRuleTitle.trim(),
+        keywords: kwArray,
+        replyText: newRuleReply.trim(),
+        replyTextAr: newRuleReply.trim(),
+        replyTextEn: newRuleReplyEn.trim() || undefined
+      });
+      setEditingBotRule(null);
+    } else {
+      addBotRule({
+        title: newRuleTitle.trim(),
+        keywords: kwArray,
+        replyText: newRuleReply.trim(),
+        replyTextAr: newRuleReply.trim(),
+        replyTextEn: newRuleReplyEn.trim() || undefined,
+        isActive: true
+      });
+    }
+
     setNewRuleTitle('');
     setNewRuleKeywords('');
     setNewRuleReply('');
+    setNewRuleReplyEn('');
     triggerSaveFeedback();
+  };
+
+  const openEditBotRule = (rule: BotKnowledgeRule) => {
+    setEditingBotRule(rule);
+    setNewRuleTitle(rule.title);
+    setNewRuleKeywords(rule.keywords.join(', '));
+    setNewRuleReply(rule.replyTextAr || rule.replyText);
+    setNewRuleReplyEn(rule.replyTextEn || '');
+  };
+
+  const cancelEditBotRule = () => {
+    setEditingBotRule(null);
+    setNewRuleTitle('');
+    setNewRuleKeywords('');
+    setNewRuleReply('');
+    setNewRuleReplyEn('');
+  };
+
+  const handleDeleteBotRule = (id: string) => {
+    if (window.confirm(t("هل أنت متأكد من حذف هذه القاعدة التعليمية للبوت؟"))) {
+      deleteBotRule(id);
+      triggerSaveFeedback();
+    }
+  };
+
+  const handleAddTrustBadge = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBadgeTitleAr.trim()) return;
+    const currentBadges = tempSettings.trustBadges || [];
+    const newBadge: StoreTrustBadge = {
+      id: `b-${Date.now()}`,
+      icon: newBadgeIcon || 'ShieldCheck',
+      titleAr: newBadgeTitleAr.trim(),
+      titleEn: newBadgeTitleEn.trim() || newBadgeTitleAr.trim(),
+      descAr: newBadgeDescAr.trim() || undefined,
+      descEn: newBadgeDescEn.trim() || undefined
+    };
+    setTempSettings({
+      ...tempSettings,
+      trustBadges: [...currentBadges, newBadge]
+    });
+    setNewBadgeTitleAr('');
+    setNewBadgeTitleEn('');
+    setNewBadgeDescAr('');
+    setNewBadgeDescEn('');
+    setNewBadgeIcon('ShieldCheck');
+  };
+
+  const handleDeleteTrustBadge = (id: string) => {
+    if (window.confirm(t("هل أنت متأكد من حذف هذه الميزة؟"))) {
+      const currentBadges = tempSettings.trustBadges || [];
+      setTempSettings({
+        ...tempSettings,
+        trustBadges: currentBadges.filter(b => b.id !== id)
+      });
+    }
   };
 
   const handleCreateCoupon = (e: React.FormEvent) => {
@@ -510,9 +636,9 @@ export const AdminDashboard: React.FC = () => {
       
       {/* Save Feedback Toast Alert */}
       {saveFeedbackToast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 font-bold text-sm animate-bounce">
-          <CheckCircle2 className="w-5 h-5 text-white" />
-          <span>{t("✓ تم حفظ كافة التعديلات وتفعيلها بنجاح في المتجر!")}</span>
+        <div className="fixed bottom-6 end-6 z-50 bg-emerald-700/95 backdrop-blur text-white px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 font-bold text-xs border border-emerald-500/40 transition-all duration-300">
+          <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+          <span>{t("تم الحفظ بنجاح ✓")}</span>
         </div>
       )}
 
@@ -797,7 +923,7 @@ export const AdminDashboard: React.FC = () => {
 
               <form onSubmit={handleSaveSlide} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="font-bold block mb-1">{t("عنوان البانر الرئيسي *")}</label>
+                  <label className="font-bold block mb-1">{t("عنوان البانر الرئيسي بالعربي *")}</label>
                   <input
                     type="text"
                     required
@@ -809,7 +935,19 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1">{t("العنوان الفرعي (الوصف)")}</label>
+                  <label className="font-bold block mb-1">{t("عنوان البانر بالإنجليزي (English)")}</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Winter Mega Deals 2026"
+                    value={slideTitleEn}
+                    onChange={(e) => setSlideTitleEn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">{t("العنوان الفرعي بالعربي")}</label>
                   <input
                     type="text"
                     placeholder={t("مثال: خصومات حصرية تصل حتى 40%")}
@@ -820,7 +958,19 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1">{t("الشارة (Badge Tag)")}</label>
+                  <label className="font-bold block mb-1">{t("العنوان الفرعي بالإنجليزي (English)")}</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Up to 40% exclusive discount"
+                    value={slideSubtitleEn}
+                    onChange={(e) => setSlideSubtitleEn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">{t("الشارة بالعربي (Badge Tag)")}</label>
                   <input
                     type="text"
                     placeholder={t("مثال: وصل حديثاً")}
@@ -831,7 +981,19 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1">{t("نص الزر")}</label>
+                  <label className="font-bold block mb-1">{t("الشارة بالإنجليزي (Badge Tag EN)")}</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. New Arrival"
+                    value={slideTagEn}
+                    onChange={(e) => setSlideTagEn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">{t("نص الزر بالعربي")}</label>
                   <input
                     type="text"
                     value={slideCta}
@@ -840,8 +1002,19 @@ export const AdminDashboard: React.FC = () => {
                   />
                 </div>
 
+                <div>
+                  <label className="font-bold block mb-1">{t("نص الزر بالإنجليزي (Button Text EN)")}</label>
+                  <input
+                    type="text"
+                    value={slideCtaEn}
+                    onChange={(e) => setSlideCtaEn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold text-left"
+                    dir="ltr"
+                  />
+                </div>
+
                 <div className="sm:col-span-2">
-                  <label className="font-bold block mb-1">{t("رابط صورة البانر *")}</label>
+                  <label className="font-bold block mb-1">{t("رابط صورة البانر (أساسي أو خلفية بديلة) *")}</label>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -860,12 +1033,56 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-2">
+                  <label className="font-bold block mb-1">{t("رابط فيديو البانر (اختياري - MP4 / WebM):")}</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://... (mp4 / webm)"
+                      value={slideVideoUrl}
+                      onChange={(e) => setSlideVideoUrl(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs"
+                      dir="ltr"
+                    />
+                    {slideVideoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setSlideVideoUrl('')}
+                        className="px-3 py-2 text-xs bg-red-100 dark:bg-red-950/40 text-red-600 rounded-xl hover:bg-red-200"
+                      >
+                        {t("إزالة الفيديو")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2 flex gap-2">
                   <button
                     type="submit"
-                    className="w-full py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
+                    className="flex-1 py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
                   >
                     {editingSlide ? t("✓ حفظ تعديلات البانر") : t("+ إضافة هذا البانر للسلايدر")}
                   </button>
+                  {editingSlide && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSlide(null);
+                        setSlideTitle('');
+                        setSlideTitleEn('');
+                        setSlideSubtitle('');
+                        setSlideSubtitleEn('');
+                        setSlideTag('');
+                        setSlideTagEn('');
+                        setSlideCta(t("تسوق الآن"));
+                        setSlideCtaEn('Shop Now');
+                        setSlideImage('');
+                        setSlideVideoUrl('');
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-gray-200 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 font-bold text-xs"
+                    >
+                      {t("إلغاء")}
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
@@ -878,14 +1095,23 @@ export const AdminDashboard: React.FC = () => {
                   <div key={s.id} className="rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden bg-gray-50 dark:bg-zinc-800/60 flex flex-col justify-between">
                     <div className="h-32 w-full overflow-hidden relative">
                       <img src={s.image} alt="" className="w-full h-full object-cover" />
-                      <span className="absolute top-2 right-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                        {s.tag}
-                      </span>
+                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                        {s.videoUrl && (
+                          <span className="bg-amber-500 text-black text-[10px] px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 shadow">
+                            <Video className="w-3 h-3" />
+                            <span>فيديو</span>
+                          </span>
+                        )}
+                        <span className="bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                          {s.tagAr || s.tag}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="p-3 space-y-1 text-xs">
-                      <h4 className="font-bold line-clamp-1">{s.title}</h4>
-                      <p className="text-gray-500 dark:text-gray-400 text-[11px] line-clamp-2">{s.subtitle}</p>
+                      <h4 className="font-bold line-clamp-1">{s.titleAr || s.title}</h4>
+                      {s.titleEn && <p className="text-[10px] text-gray-400 font-mono line-clamp-1">{s.titleEn}</p>}
+                      <p className="text-gray-500 dark:text-gray-400 text-[11px] line-clamp-2">{s.subtitleAr || s.subtitle}</p>
                     </div>
 
                     <div className="p-2.5 border-t border-gray-200 dark:border-zinc-700 flex justify-between items-center">
@@ -926,7 +1152,7 @@ export const AdminDashboard: React.FC = () => {
                 <span>{t("إضافة قسم جديد لمتجر مرتفعات ستور")}</span>
               </h3>
 
-              <form onSubmit={handleAddCategory} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+              <form onSubmit={handleAddCategory} className="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
                 <div>
                   <label className="font-bold block mb-1">{t("اسم القسم بالعربي *")}</label>
                   <input
@@ -946,7 +1172,8 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="e.g. Watches & Accessories"
                     value={newCatNameEn}
                     onChange={(e) => setNewCatNameEn(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold text-left"
+                    dir="ltr"
                   />
                 </div>
 
@@ -959,6 +1186,21 @@ export const AdminDashboard: React.FC = () => {
                     onChange={(e) => setNewCatId(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold font-mono"
                   />
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">{t("أيقونة القسم")}</label>
+                  <select
+                    value={newCatIcon}
+                    onChange={(e) => setNewCatIcon(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold font-bold"
+                  >
+                    {AVAILABLE_CATEGORY_ICONS.map(ic => (
+                      <option key={ic.id} value={ic.id}>
+                        {ic.nameAr} ({ic.id})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex items-end">
@@ -978,9 +1220,14 @@ export const AdminDashboard: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {categories.map((cat) => (
                   <div key={cat.id} className="p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/60 flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-xs">{cat.nameAr}</h4>
-                      <span className="text-[10px] text-gray-400 font-mono">{cat.id} • {cat.nameEn}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 flex items-center justify-center text-brand-goldDark shadow-sm">
+                        {renderDynamicIcon(cat.icon, { className: 'w-5 h-5' })}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-xs">{cat.nameAr}</h4>
+                        <span className="text-[10px] text-gray-400 font-mono">{cat.id} • {cat.nameEn}</span>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -989,6 +1236,7 @@ export const AdminDashboard: React.FC = () => {
                           setEditingCategory(cat);
                           setEditCatNameAr(cat.nameAr);
                           setEditCatNameEn(cat.nameEn);
+                          setEditCatIcon(cat.icon || 'Sparkles');
                         }}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
                       >
@@ -1018,7 +1266,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-white dark:bg-zinc-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-brand-gold/40 space-y-4 text-xs">
                   <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-zinc-800">
-                    <h3 className="font-bold text-sm">{t("تعديل اسم القسم:")} {editingCategory.nameAr}</h3>
+                    <h3 className="font-bold text-sm">{t("تعديل اسم وأيقونة القسم:")} {editingCategory.nameAr}</h3>
                     <button onClick={() => setEditingCategory(null)}>✕</button>
                   </div>
 
@@ -1040,8 +1288,24 @@ export const AdminDashboard: React.FC = () => {
                         type="text"
                         value={editCatNameEn}
                         onChange={(e) => setEditCatNameEn(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-left"
+                        dir="ltr"
                       />
+                    </div>
+
+                    <div>
+                      <label className="font-bold block mb-1">{t("أيقونة القسم:")}</label>
+                      <select
+                        value={editCatIcon}
+                        onChange={(e) => setEditCatIcon(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 font-bold"
+                      >
+                        {AVAILABLE_CATEGORY_ICONS.map(ic => (
+                          <option key={ic.id} value={ic.id}>
+                            {ic.nameAr} ({ic.id})
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="flex gap-2 pt-2">
@@ -1591,15 +1855,27 @@ export const AdminDashboard: React.FC = () => {
         )}
 
         {/* TAB 9: BOT TRAINING */}
+        {/* TAB 8: BOT TRAINING */}
         {activeTab === 'bot-training' && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
-              <h3 className="text-base font-black flex items-center gap-2">
-                <Bot className="w-4 h-4 text-brand-goldDark" />
-                <span>{t("إضافة قاعدة ذكاء وتدريب للبوت")}</span>
+              <h3 className="text-base font-black flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-brand-goldDark" />
+                  <span>{editingBotRule ? t("تعديل قاعدة ذكاء البوت:") + ' ' + editingBotRule.title : t("إضافة قاعدة ذكاء وتدريب للبوت")}</span>
+                </div>
+                {editingBotRule && (
+                  <button
+                    type="button"
+                    onClick={cancelEditBotRule}
+                    className="text-xs text-gray-500 hover:text-red-500 font-bold"
+                  >
+                    {t("إلغاء التعديل")} ✕
+                  </button>
+                )}
               </h3>
 
-              <form onSubmit={handleAddBotRule} className="space-y-3 text-xs">
+              <form onSubmit={handleSaveBotRule} className="space-y-3 text-xs">
                 <div>
                   <label className="font-bold block mb-1">{t("عنوان القاعدة *")}</label>
                   <input
@@ -1617,31 +1893,56 @@ export const AdminDashboard: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder={t("مثال: ضمان, صيانة, عطل, تصليح")}
+                    placeholder={t("مثال: ضمان, صيانة, عطل, warranty, guarantee")}
                     value={newRuleKeywords}
                     onChange={(e) => setNewRuleKeywords(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
                   />
                 </div>
 
-                <div>
-                  <label className="font-bold block mb-1">{t("نص الرد التلقائي *")}</label>
-                  <textarea
-                    required
-                    rows={3}
-                    placeholder={t("اكتب الإجابة التي سيرد بها البوت تلقائياً فور كتابة العميل لهذه الكلمات...")}
-                    value={newRuleReply}
-                    onChange={(e) => setNewRuleReply(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold block mb-1">{t("نص الرد بالعربي *")}</label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder={t("اكتب الإجابة التي سيرد بها البوت تلقائياً عند السؤال بالعربية...")}
+                      value={newRuleReply}
+                      onChange={(e) => setNewRuleReply(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">{t("نص الرد بالإنجليزي (English Reply)")}</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Automatic English response when customer asks in English..."
+                      value={newRuleReplyEn}
+                      onChange={(e) => setNewRuleReplyEn(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 focus:border-brand-gold text-left"
+                      dir="ltr"
+                    />
+                  </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
-                >
-                  {t("+ تدريب وحفظ القاعدة")}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-gold-gradient text-black font-extrabold text-xs shadow-md hover:brightness-105"
+                  >
+                    {editingBotRule ? t("✓ حفظ تعديلات القاعدة") : t("+ تدريب وحفظ القاعدة")}
+                  </button>
+                  {editingBotRule && (
+                    <button
+                      type="button"
+                      onClick={cancelEditBotRule}
+                      className="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 font-bold text-xs"
+                    >
+                      {t("إلغاء")}
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
 
@@ -1653,12 +1954,22 @@ export const AdminDashboard: React.FC = () => {
                   <div key={r.id} className="p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/60 space-y-2">
                     <div className="flex justify-between items-center">
                       <h4 className="font-bold text-xs">{r.title}</h4>
-                      <button
-                        onClick={() => deleteBotRule(r.id)}
-                        className="p-1 text-gray-400 hover:text-red-600 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => openEditBotRule(r)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors"
+                          title={t("تعديل القاعدة")}
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBotRule(r.id)}
+                          className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition-colors"
+                          title={t("حذف")}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-1">
@@ -1669,9 +1980,16 @@ export const AdminDashboard: React.FC = () => {
                       ))}
                     </div>
 
-                    <p className="text-[11px] text-gray-600 dark:text-gray-300 bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-gray-100 dark:border-zinc-800">
-                      {r.replyText}
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-[11px] text-gray-600 dark:text-gray-300 bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-gray-100 dark:border-zinc-800">
+                        {r.replyTextAr || r.replyText}
+                      </p>
+                      {r.replyTextEn && (
+                        <p className="text-[10px] text-gray-400 font-mono bg-white dark:bg-zinc-900 p-2 rounded-xl border border-gray-100 dark:border-zinc-800 text-left" dir="ltr">
+                          EN: {r.replyTextEn}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1735,6 +2053,29 @@ export const AdminDashboard: React.FC = () => {
                   </div>
 
                   <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold">{t("درجة تعتيم البانر الرئيسي (Overlay):")}</label>
+                      <span className="text-xs font-mono font-bold text-brand-goldDark dark:text-brand-gold">
+                        {Math.round((tempSettings.heroOverlayOpacity ?? 0.35) * 100)}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={tempSettings.heroOverlayOpacity ?? 0.35}
+                      onChange={(e) => setTempSettings({ ...tempSettings, heroOverlayOpacity: parseFloat(e.target.value) })}
+                      className="w-full accent-amber-500 cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
+                      <span>0% ({t("شفاف")})</span>
+                      <span>35% ({t("الافتراضي")})</span>
+                      <span>100% ({t("معتم")})</span>
+                    </div>
+                  </div>
+
+                  <div>
                     <label className="font-bold block mb-1">{t("تكلفة الشحن الافتراضية (ج.م) *")}</label>
                     <input
                       type="number"
@@ -1757,45 +2098,179 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="font-bold block mb-1">{t("شريط الإعلانات أعلى المتجر:")}</label>
-                  <input
-                    type="text"
-                    value={tempSettings.announcementText}
-                    onChange={(e) => setTempSettings({ ...tempSettings, announcementText: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold block mb-1">{t("شريط الإعلانات أعلى المتجر بالعربي:")}</label>
+                    <input
+                      type="text"
+                      value={tempSettings.announcementText || tempSettings.announcementTextAr || ''}
+                      onChange={(e) => setTempSettings({ ...tempSettings, announcementText: e.target.value, announcementTextAr: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">{t("شريط الإعلانات بالإنجليزي (English Announcement):")}</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Free shipping on orders over 1500 EGP"
+                      value={tempSettings.announcementTextEn || ''}
+                      onChange={(e) => setTempSettings({ ...tempSettings, announcementTextEn: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-left"
+                      dir="ltr"
+                    />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="font-bold block mb-1">{t("سياسة الاستبدال والاسترجاع:")}</label>
-                    <textarea
-                      rows={3}
-                      value={tempSettings.returnPolicyText}
-                      onChange={(e) => setTempSettings({ ...tempSettings, returnPolicyText: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
-                    />
+                <div className="space-y-3">
+                  <h4 className="font-black text-xs text-gray-700 dark:text-gray-300">{t("سياسات المتجر (ثنائية اللغة):")}</h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold block mb-1">{t("سياسة الاستبدال والاسترجاع (عربي):")}</label>
+                      <textarea
+                        rows={3}
+                        value={tempSettings.returnPolicyText}
+                        onChange={(e) => setTempSettings({ ...tempSettings, returnPolicyText: e.target.value, returnPolicyTextAr: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold block mb-1">{t("سياسة الاستبدال والاسترجاع (إنجليزي):")}</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Return & Exchange policy in English..."
+                        value={tempSettings.returnPolicyTextEn || ''}
+                        onChange={(e) => setTempSettings({ ...tempSettings, returnPolicyTextEn: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-left"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="font-bold block mb-1">{t("سياسة الشحن والتسليم:")}</label>
-                    <textarea
-                      rows={3}
-                      value={tempSettings.shippingPolicyText}
-                      onChange={(e) => setTempSettings({ ...tempSettings, shippingPolicyText: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold block mb-1">{t("سياسة الشحن والتسليم (عربي):")}</label>
+                      <textarea
+                        rows={3}
+                        value={tempSettings.shippingPolicyText}
+                        onChange={(e) => setTempSettings({ ...tempSettings, shippingPolicyText: e.target.value, shippingPolicyTextAr: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold block mb-1">{t("سياسة الشحن والتسليم (إنجليزي):")}</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Shipping & Delivery policy in English..."
+                        value={tempSettings.shippingPolicyTextEn || ''}
+                        onChange={(e) => setTempSettings({ ...tempSettings, shippingPolicyTextEn: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-left"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="font-bold block mb-1">{t("سياسة الخصوصية:")}</label>
-                    <textarea
-                      rows={3}
-                      value={tempSettings.privacyPolicyText}
-                      onChange={(e) => setTempSettings({ ...tempSettings, privacyPolicyText: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold block mb-1">{t("سياسة الخصوصية (عربي):")}</label>
+                      <textarea
+                        rows={3}
+                        value={tempSettings.privacyPolicyText}
+                        onChange={(e) => setTempSettings({ ...tempSettings, privacyPolicyText: e.target.value, privacyPolicyTextAr: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold block mb-1">{t("سياسة الخصوصية (إنجليزي):")}</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Privacy policy in English..."
+                        value={tempSettings.privacyPolicyTextEn || ''}
+                        onChange={(e) => setTempSettings({ ...tempSettings, privacyPolicyTextEn: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-left"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trust Badges Management */}
+                <div className="pt-4 border-t border-gray-200 dark:border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-black text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-brand-goldDark" />
+                        <span>{t("مميزات الثقة والأمان تحت البانر الرئيسي (Trust Badges):")}</span>
+                      </h4>
+                      <p className="text-[11px] text-gray-500">
+                        {t("البطاقات الأربعة المعروضة مباشرة أسفل البانر الرئيسي في الصفحة الرئيسية")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Badges List */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(tempSettings.trustBadges || []).map((b) => (
+                      <div key={b.id} className="p-3 rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-800/60 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-brand-goldDark flex items-center justify-center">
+                            {renderDynamicIcon(b.icon, { className: 'w-4 h-4' })}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs">{b.titleAr}</p>
+                            <p className="text-[10px] text-gray-400 font-mono">{b.titleEn}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTrustBadge(b.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg"
+                          title={t("حذف")}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Trust Badge Mini-Form */}
+                  <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-zinc-800/40 border border-amber-200/60 dark:border-zinc-700/60 space-y-2">
+                    <p className="font-bold text-[11px] text-brand-goldDark">{t("+ إضافة ميزة ثقة جديدة:")}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                      <input
+                        type="text"
+                        placeholder={t("العنوان بالعربي *")}
+                        value={newBadgeTitleAr}
+                        onChange={(e) => setNewBadgeTitleAr(e.target.value)}
+                        className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Title (English)"
+                        value={newBadgeTitleEn}
+                        onChange={(e) => setNewBadgeTitleEn(e.target.value)}
+                        className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs text-left"
+                        dir="ltr"
+                      />
+                      <select
+                        value={newBadgeIcon}
+                        onChange={(e) => setNewBadgeIcon(e.target.value)}
+                        className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs font-bold"
+                      >
+                        {AVAILABLE_CATEGORY_ICONS.map(ic => (
+                          <option key={ic.id} value={ic.id}>{ic.nameAr} ({ic.id})</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAddTrustBadge}
+                        className="px-3 py-1.5 rounded-lg bg-black dark:bg-white text-white dark:text-black font-bold text-xs"
+                      >
+                        {t("+ إضافة الميزة")}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1958,14 +2433,53 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'YOUR_NEW_ADMIN@EMAIL.COM');
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold block mb-1">{t("وصف تفصيلي للمنتج بالعربي:")}</label>
+                  <textarea
+                    rows={3}
+                    value={prodDescription}
+                    onChange={(e) => setProdDescription(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1">{t("وصف تفصيلي للمنتج بالإنجليزي (English):")}</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Detailed product description in English..."
+                    value={prodDescriptionEn}
+                    onChange={(e) => setProdDescriptionEn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-left"
+                    dir="ltr"
+                  />
+                </div>
+              </div>
+
+              {/* Product Video URL (Optional) */}
               <div>
-                <label className="font-bold block mb-1">{t("وصف تفصيلي للمنتج:")}</label>
-                <textarea
-                  rows={3}
-                  value={prodDescription}
-                  onChange={(e) => setProdDescription(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
-                />
+                <label className="font-bold block mb-1">
+                  {t("فيديو المنتج (اختياري - رابط فيديو MP4 / WebM / YouTube):")}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="https://... (mp4 / webm / youtube)"
+                    value={prodVideoUrl}
+                    onChange={(e) => setProdVideoUrl(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs"
+                    dir="ltr"
+                  />
+                  {prodVideoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setProdVideoUrl('')}
+                      className="px-3 py-1.5 rounded-xl bg-red-100 dark:bg-red-950/40 text-red-600 text-xs font-bold"
+                    >
+                      {t("إزالة")}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Images & Storage Upload */}
@@ -2016,15 +2530,28 @@ WHERE id = (SELECT id FROM auth.users WHERE email = 'YOUR_NEW_ADMIN@EMAIL.COM');
               </div>
 
               {/* Features List */}
-              <div>
-                <label className="font-bold block mb-1">{t("المميزات الرئيسية (ميزة في كل سطر):")}</label>
-                <textarea
-                  rows={2}
-                  placeholder={t("بطارية تدوم 3 أيام\nمقاومة للمياه IP68")}
-                  value={prodFeatures}
-                  onChange={(e) => setProdFeatures(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold block mb-1">{t("المميزات الرئيسية بالعربي (ميزة في كل سطر):")}</label>
+                  <textarea
+                    rows={2}
+                    placeholder={t("بطارية تدوم 3 أيام\nمقاومة للمياه IP68")}
+                    value={prodFeatures}
+                    onChange={(e) => setProdFeatures(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold block mb-1">{t("المميزات بالإنجليزي (ميزة في كل سطر):")}</label>
+                  <textarea
+                    rows={2}
+                    placeholder={"3-day battery life\nIP68 Water resistant"}
+                    value={prodFeaturesEn}
+                    onChange={(e) => setProdFeaturesEn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-left"
+                    dir="ltr"
+                  />
+                </div>
               </div>
 
               <button

@@ -16,6 +16,9 @@ import { Footer } from './components/Footer';
 
 export const AppContent: React.FC = () => {
   const { currentView, isAdminAuthenticated, activeInvoiceOrder, setActiveInvoiceOrder, theme } = useStore();
+  const isPublicBuild = import.meta.env.VITE_PUBLIC_BUILD === 'true' || import.meta.env.MODE === 'public';
+
+  const showAdmin = !isPublicBuild && currentView === 'admin' && isAdminAuthenticated;
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${
@@ -26,7 +29,7 @@ export const AppContent: React.FC = () => {
       <Header />
 
       <main className="flex-1">
-        {currentView === 'store' || !isAdminAuthenticated ? (
+        {!showAdmin ? (
           <>
             <HeroSlider />
             <CategoryCards />
@@ -37,7 +40,7 @@ export const AppContent: React.FC = () => {
         )}
       </main>
 
-      {(currentView === 'store' || !isAdminAuthenticated) && <Footer />}
+      {!showAdmin && <Footer />}
 
       {/* Overlays & Drawers */}
       <ProductDetailModal />

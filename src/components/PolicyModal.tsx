@@ -4,7 +4,7 @@ import { X, ShieldCheck, Truck, RotateCcw, Lock } from 'lucide-react';
 
 import { t } from '../i18n';
 export const PolicyModal: React.FC = () => {
-  const { activePolicyModal, setActivePolicyModal, settings } = useStore();
+  const { activePolicyModal, setActivePolicyModal, settings, language } = useStore();
 
   if (!activePolicyModal) return null;
 
@@ -25,10 +25,11 @@ export const PolicyModal: React.FC = () => {
   };
 
   const getContent = () => {
+    const isEn = language === 'en';
     switch (activePolicyModal) {
-      case 'return': return t(settings.returnPolicyText);
-      case 'shipping': return t(settings.shippingPolicyText);
-      case 'privacy': return t(settings.privacyPolicyText);
+      case 'return': return (isEn && settings.returnPolicyTextEn) ? settings.returnPolicyTextEn : (settings.returnPolicyTextAr || settings.returnPolicyText);
+      case 'shipping': return (isEn && settings.shippingPolicyTextEn) ? settings.shippingPolicyTextEn : (settings.shippingPolicyTextAr || settings.shippingPolicyText);
+      case 'privacy': return (isEn && settings.privacyPolicyTextEn) ? settings.privacyPolicyTextEn : (settings.privacyPolicyTextAr || settings.privacyPolicyText);
     }
   };
 

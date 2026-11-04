@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:admin": "vite build",
+    "build:public": "vite build --mode public",
     "preview": "vite preview",
     "test": "node --test tests/ecommerce.test.mjs"
   },

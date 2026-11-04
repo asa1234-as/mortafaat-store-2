@@ -47,27 +47,51 @@ export const INITIAL_SLIDES: HeroSlide[] = [
   {
     id: 'slide-1',
     title: 'أناقة وفخامة تليق بك',
+    titleAr: 'أناقة وفخامة تليق بك',
+    titleEn: 'Elegance & Luxury Befitting You',
     subtitle: 'تشكيلة الشتاء الفاخرة وعطور شموخ المرتفعات الملكية بأسعار حصرية',
+    subtitleAr: 'تشكيلة الشتاء الفاخرة وعطور شموخ المرتفعات الملكية بأسعار حصرية',
+    subtitleEn: 'Luxury Winter Collection & Royal High-Elevation Perfumes at Exclusive Prices',
     tag: 'وصل حديثاً 2026',
+    tagAr: 'وصل حديثاً 2026',
+    tagEn: 'New Arrival 2026',
     ctaText: 'تسوق الأزياء والعطور',
+    ctaTextAr: 'تسوق الأزياء والعطور',
+    ctaTextEn: 'Shop Fashion & Perfumes',
     targetCategory: 'fashion',
     image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80'
   },
   {
     id: 'slide-2',
     title: 'أقوى عروض الإلكترونيات والذكاء',
+    titleAr: 'أقوى عروض الإلكترونيات والذكاء',
+    titleEn: 'Top Tech & Electronics Deals',
     subtitle: 'سماعات عازلة للضوضاء، ساعات ذكية، وشواحن فائقة السرعة بخصم حتى 40%',
+    subtitleAr: 'سماعات عازلة للضوضاء، ساعات ذكية، وشواحن فائقة السرعة بخصم حتى 40%',
+    subtitleEn: 'Noise-Canceling Earbuds, Smartwatches, and Ultra-Fast Chargers up to 40% Off',
     tag: 'تخفيضات كبرى',
+    tagAr: 'تخفيضات كبرى',
+    tagEn: 'Mega Sale',
     ctaText: 'اكتشف الإلكترونيات',
+    ctaTextAr: 'اكتشف الإلكترونيات',
+    ctaTextEn: 'Explore Electronics',
     targetCategory: 'electronics',
     image: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?auto=format&fit=crop&w=1200&q=80'
   },
   {
     id: 'slide-3',
     title: 'بيتك يستحق الأفضل دائماً',
+    titleAr: 'بيتك يستحق الأفضل دائماً',
+    titleEn: 'Your Home Deserves the Best',
     subtitle: 'قلايات هوائية ذكية وأجهزة منزلية متطورة تجعل حياتك أسهل وأسرع',
+    subtitleAr: 'قلايات هوائية ذكية وأجهزة منزلية متطورة تجعل حياتك أسهل وأسرع',
+    subtitleEn: 'Smart Air Fryers & Advanced Home Appliances Making Life Simpler and Faster',
     tag: 'ضمان عامين كاملين',
+    tagAr: 'ضمان عامين كاملين',
+    tagEn: '2-Year Full Warranty',
     ctaText: 'تسوق الأجهزة المنزلية',
+    ctaTextAr: 'تسوق الأجهزة المنزلية',
+    ctaTextEn: 'Shop Home Appliances',
     targetCategory: 'home',
     image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=80'
   }
@@ -256,7 +280,46 @@ export const INITIAL_SETTINGS: StoreSettings = {
   shippingFee: 50,
   freeShippingThreshold: 1000,
   announcementText: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + دفع عند الاستلام مع المعاينة قبل الدفع! 🔥',
+  announcementTextAr: '🔥 عروض افتتاح مرتفعات ستور: شحن مجاني لأي طلب أكثر من 1000 جنيه + دفع عند الاستلام مع المعاينة قبل الدفع! 🔥',
+  announcementTextEn: '🔥 Grand Opening: Free Delivery on orders over 1000 EGP + Cash on Delivery with free inspection before payment! 🔥',
   sliderIntervalSeconds: 5,
+  heroOverlayOpacity: 0.35,
+
+  // Trust Badges under Hero Banner
+  trustBadges: [
+    {
+      id: 'tb-1',
+      icon: 'Truck',
+      titleAr: 'شحن لجميع محافظات مصر',
+      titleEn: 'Shipping to all Egypt Governorates',
+      descAr: 'توصيل سريع خلال 24 - 48 ساعة',
+      descEn: 'Fast delivery in 24-48 hours'
+    },
+    {
+      id: 'tb-2',
+      icon: 'ShieldCheck',
+      titleAr: 'منتجات أصلية ومضمونة 100%',
+      titleEn: '100% Guaranteed Authentic Products',
+      descAr: 'جودة فائقة وفحص دقيق قبل الشحن',
+      descEn: 'Premium quality & inspected before delivery'
+    },
+    {
+      id: 'tb-3',
+      icon: 'CreditCard',
+      titleAr: 'دفع عند الاستلام مع المعاينة',
+      titleEn: 'Cash on Delivery with Inspection',
+      descAr: 'افحص وعاين منتجك مع المندوب قبل الدفع',
+      descEn: 'Inspect your order before paying'
+    },
+    {
+      id: 'tb-4',
+      icon: 'Sparkles',
+      titleAr: 'استبدال واسترجاع بكل سهولة',
+      titleEn: 'Hassle-Free Returns & Exchanges',
+      descAr: 'حق استرجاع واستبدال خلال 14 يوماً',
+      descEn: '14-day replacement and return guarantee'
+    }
+  ],
 
   // Dynamic Gateway (Disabled by default until merchant gets approved by Fawry or Kashier)
   isOnlinePaymentEnabled: false,
@@ -265,10 +328,18 @@ export const INITIAL_SETTINGS: StoreSettings = {
   onlineGatewayEnvironment: 'live',
   onlineGatewayNotice: 'الدفع الإلكتروني عبر بوابة الدفع المعتمدة (سيتم تفعيلها فور صدور موافقة البنك).',
 
-  // Policies
+  // Policies (Bilingual)
   returnPolicyText: 'يحق للعميل استبدال أو استرجاع المنتج خلال 14 يوماً من تاريخ الاستلام بشرط أن يكون المنتج بحالته الأصلية وفي غلافه، مع إمكانية فحص ومعاينة المنتج قبل الاستلام والدفع للمندوب.',
+  returnPolicyTextAr: 'يحق للعميل استبدال أو استرجاع المنتج خلال 14 يوماً من تاريخ الاستلام بشرط أن يكون المنتج بحالته الأصلية وفي غلافه، مع إمكانية فحص ومعاينة المنتج قبل الاستلام والدفع للمندوب.',
+  returnPolicyTextEn: 'Customers have the right to exchange or return the product within 14 days of receipt, provided the item is in its original condition and packaging. You may also inspect the item before delivery acceptance and payment.',
+
   shippingPolicyText: 'يتم شحن وتوصيل الطلبات خلال 24 إلى 48 ساعة لمحافظات القاهرة والجيزة والإسكندرية، وخلال 3 إلى 4 أيام لباقي محافظات الجمهورية مع شركة شحن متخصصة.',
-  privacyPolicyText: 'نلتزم في مرتفعات ستور بحماية خصوصية عملائنا ولا نشارك أي بيانات شخصية أو عناوين مع أي جهة خارجية إلا لغرض توصيل الشحنة فقط.'
+  shippingPolicyTextAr: 'يتم شحن وتوصيل الطلبات خلال 24 إلى 48 ساعة لمحافظات القاهرة والجيزة والإسكندرية، وخلال 3 إلى 4 أيام لباقي محافظات الجمهورية مع شركة شحن متخصصة.',
+  shippingPolicyTextEn: 'Orders are shipped and delivered within 24 to 48 hours to Cairo, Giza, and Alexandria, and within 3 to 4 business days to other governorates via specialized courier partners.',
+
+  privacyPolicyText: 'نلتزم في مرتفعات ستور بحماية خصوصية عملائنا ولا نشارك أي بيانات شخصية أو عناوين مع أي جهة خارجية إلا لغرض توصيل الشحنة فقط.',
+  privacyPolicyTextAr: 'نلتزم في مرتفعات ستور بحماية خصوصية عملائنا ولا نشارك أي بيانات شخصية أو عناوين مع أي جهة خارجية إلا لغرض توصيل الشحنة فقط.',
+  privacyPolicyTextEn: 'At Mortafaat Store, we are committed to protecting customer privacy and never share any personal details or delivery addresses with third parties except for shipment delivery purposes.'
 };
 
 export const INITIAL_COUPONS: Coupon[] = [
@@ -292,36 +363,46 @@ export const INITIAL_BOT_RULES: BotKnowledgeRule[] = [
   {
     id: 'r-1',
     title: 'قاعدة الشحن ومصاريف التوصيل',
-    keywords: ['شحن', 'توصيل', 'مصاريف', 'شحن مجاني', 'تكلفة'],
+    keywords: ['شحن', 'توصيل', 'مصاريف', 'شحن مجاني', 'تكلفة', 'shipping', 'delivery', 'cost'],
     replyText: 'مصاريف الشحن الافتراضية 50 جنيه فقط لجميع المحافظات! ولو طلبك بمبلغ 1000 جنيه أو أكثر، ستحصل على شحن مجاني بالكامل 🎉',
+    replyTextAr: 'مصاريف الشحن الافتراضية 50 جنيه فقط لجميع المحافظات! ولو طلبك بمبلغ 1000 جنيه أو أكثر، ستحصل على شحن مجاني بالكامل 🎉',
+    replyTextEn: 'Standard shipping fee is 50 EGP for all governorates! For orders of 1000 EGP or more, shipping is completely FREE 🎉',
     isActive: true
   },
   {
     id: 'r-2',
     title: 'قاعدة طريقة الدفع والمعاينة',
-    keywords: ['دفع', 'طريقة الدفع', 'كاش', 'معاينة', 'استلام', 'فحص'],
+    keywords: ['دفع', 'طريقة الدفع', 'كاش', 'معاينة', 'استلام', 'فحص', 'payment', 'cod', 'cash'],
     replyText: 'الدفع متاح نقداً عند الاستلام (Cash on Delivery). والأهم أن لك الحق في فحص ومعاينة الأوردر بالكامل والتأكد من الجودة قبل دفع أي مليم للمندوب 👍',
+    replyTextAr: 'الدفع متاح نقداً عند الاستلام (Cash on Delivery). والأهم أن لك الحق في فحص ومعاينة الأوردر بالكامل والتأكد من الجودة قبل دفع أي مليم للمندوب 👍',
+    replyTextEn: 'Payment is available via Cash on Delivery (COD). Best of all, you have the full right to examine and inspect your package before paying anything to the courier 👍',
     isActive: true
   },
   {
     id: 'r-3',
     title: 'قاعدة الهدايا وعروض الشراء',
-    keywords: ['عرض', 'عروض', 'هدية', 'هدايا', 'اثنين', 'خصم'],
+    keywords: ['عرض', 'عروض', 'هدية', 'هدايا', 'اثنين', 'خصم', 'offer', 'gift', 'discount', 'deal'],
     replyText: 'عند شرائك قطعتين من أي منتج ستحصل على هدية فورية قيمة مع الأوردر + كود خصم خاص على طلبك القادم! استخدم كود الخصم MORTAFAAT10 للحصول على 10% خصم إضافي.',
+    replyTextAr: 'عند شرائك قطعتين من أي منتج ستحصل على هدية فورية قيمة مع الأوردر + كود خصم خاص على طلبك القادم! استخدم كود الخصم MORTAFAAT10 للحصول على 10% خصم إضافي.',
+    replyTextEn: 'Buy any two items and receive an instant gift with your order + a special discount code for your next order! Use coupon MORTAFAAT10 for an extra 10% off.',
     isActive: true
   },
   {
     id: 'r-4',
     title: 'قاعدة التواصل المباشر ورقم الهاتف',
-    keywords: ['تليفون', 'رقم', 'واتس', 'واتساب', 'موبايل', 'خدمة العملاء'],
+    keywords: ['تليفون', 'رقم', 'واتس', 'واتساب', 'موبايل', 'خدمة العملاء', 'phone', 'whatsapp', 'contact', 'call'],
     replyText: 'يمكنك التواصل معنا مباشرة مع الإدارة أو الطلب هاتفياً وعبر واتساب على رقمنا المعتمد: 01067906474.',
+    replyTextAr: 'يمكنك التواصل معنا مباشرة مع الإدارة أو الطلب هاتفياً وعبر واتساب على رقمنا المعتمد: 01067906474.',
+    replyTextEn: 'You can contact store management directly or order by phone and WhatsApp at our verified number: 01067906474.',
     isActive: true
   },
   {
     id: 'r-5',
     title: 'قاعدة الاستبدال والاسترجاع',
-    keywords: ['استرجاع', 'استبدال', 'ضمان', 'رجع'],
+    keywords: ['استرجاع', 'استبدال', 'ضمان', 'رجع', 'return', 'exchange', 'warranty'],
     replyText: 'نضمن لك استبدال واسترجاع مجاني خلال 14 يوماً من استلام الطلب بكل سهولة إذا كان المنتج غير مطابق.',
+    replyTextAr: 'نضمن لك استبدال واسترجاع مجاني خلال 14 يوماً من استلام الطلب بكل سهولة إذا كان المنتج غير مطابق.',
+    replyTextEn: 'We guarantee hassle-free return and exchange within 14 days of receiving your order if the product does not match specifications.',
     isActive: true
   }
 ];

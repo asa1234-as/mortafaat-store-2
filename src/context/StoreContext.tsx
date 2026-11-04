@@ -823,7 +823,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setTimeout(() => {
       let reply = t("شكراً لتواصلك معنا! ممثل خدمة عملاء مرتفعات ستور سيرد عليك في أقرب وقت. يمكنك أيضاً الاتصال بنا مباشرة على 01067906474.");
       if (matchedRule) {
-        reply = matchedRule.replyText;
+        if (language === 'en') {
+          reply = matchedRule.replyTextEn || matchedRule.replyText;
+        } else {
+          reply = matchedRule.replyTextAr || matchedRule.replyText;
+        }
       }
       setChatMessages(prev => [
         ...prev,

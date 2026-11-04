@@ -117,9 +117,13 @@ export const Header: React.FC = () => {
           <span>{t("خدمة العملاء:")} {settings.phone}</span>
         </div>
 
-        {/* Dynamic Announcement */}
+        {/* Dynamic Announcement (Bilingual) */}
         <div className="mx-auto flex items-center gap-2 text-center truncate px-2">
-          <span>{t(settings.announcementText)}</span>
+          <span>
+            {language === 'ar' 
+              ? (settings.announcementTextAr || settings.announcementText)
+              : (settings.announcementTextEn || settings.announcementTextAr || settings.announcementText)}
+          </span>
         </div>
 
         {/* Top Controls: Language + Theme Toggle + User Auth + Owner Portal */}
@@ -194,26 +198,31 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Download Source Code ZIP Link (Local Preview Only) */}
-          <a
-            href="http://localhost:3005/Mortafaat_Store_Fixed_Final.zip"
-            download="Mortafaat_Store_Fixed_Final.zip"
-            className="flex items-center gap-1 bg-black/25 hover:bg-black/40 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
-            title={t("تحميل كود المتجر كاملاً كملف مضغوط ZIP")}
-          >
-            <Download className="w-3 h-3" />
-            <span>{t("تحميل ZIP")}</span>
-          </a>
+          {/* Private Admin & ZIP Tools (Excluded in Public Client Production Build) */}
+          {!(import.meta.env.VITE_PUBLIC_BUILD === 'true' || import.meta.env.MODE === 'public') && (
+            <>
+              {/* Download Source Code ZIP Link (Local Preview Only) */}
+              <a
+                href="http://localhost:3005/Mortafaat_Store_Fixed_Final.zip"
+                download="Mortafaat_Store_Fixed_Final.zip"
+                className="flex items-center gap-1 bg-black/25 hover:bg-black/40 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
+                title={t("تحميل كود المتجر كاملاً كملف مضغوط ZIP")}
+              >
+                <Download className="w-3 h-3" />
+                <span>{t("تحميل ZIP")}</span>
+              </a>
 
-          {/* Owner Secret Admin Suite Trigger (Direct 1-Click for Local Preview) */}
-          <button
-            onClick={() => void loginAdmin()}
-            className="flex items-center gap-1 bg-black/30 hover:bg-black/50 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
-            title={t("لوحة تحكم الإدارة (معاينة تجريبية فورية)")}
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{t("لوحة الإدارة")}</span>
-          </button>
+              {/* Owner Secret Admin Suite Trigger (Direct 1-Click for Local Preview) */}
+              <button
+                onClick={() => void loginAdmin()}
+                className="flex items-center gap-1 bg-black/30 hover:bg-black/50 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
+                title={t("لوحة تحكم الإدارة (معاينة تجريبية فورية)")}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>{t("لوحة الإدارة")}</span>
+              </button>
+            </>
+          )}
 
         </div>
       </div>
