@@ -144,6 +144,17 @@ export interface StoreTrustBadge {
   descEn?: string;
 }
 
+export interface AnnouncementOffer {
+  id: string;
+  textAr: string;
+  textEn: string;
+  link?: string;
+  isActive: boolean;
+  startDate?: string;
+  endDate?: string;
+  durationSeconds?: number;
+}
+
 export interface StoreSettings {
   storeNameAr: string;
   storeNameEn: string;
@@ -154,6 +165,8 @@ export interface StoreSettings {
   announcementText: string;
   announcementTextAr?: string;
   announcementTextEn?: string;
+  announcementOffers?: AnnouncementOffer[];
+  announcementSpeedSeconds?: number;
 
   // Hero Slider timing & dimming overlay opacity (0 to 1)
   sliderIntervalSeconds: number;

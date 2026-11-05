@@ -1,257 +1,409 @@
 import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
-import { X, Lock } from 'lucide-react';
-
+import { X, Lock, User as UserIcon, Mail, Phone, KeyRound, ArrowRight, ShieldCheck } from 'lucide-react';
 import { t } from '../i18n';
-import { signInWithEmail, signUpWithEmail, requestPasswordReset } from '../lib/supabase';
+import { 
+  loginCustomer, 
+  registerCustomer, 
+  startPasswordRecovery, 
+  verifyOtpAndResetPassword 
+} from '../lib/authService';
+
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, setCurrentUser } = useStore();
 
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password' | 'verify-otp'>('login');
+  
+  // Form fields
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  
+  // State feedback
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isAuthModalOpen) return null;
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailOrPhone.includes('@') || !password || !name) {
-      setAuthError(t("استخدم بريدًا إلكترونيًا صحيحًا وكلمة مرور واسمًا."));
-      return;
-    }
-    setIsSubmitting(true); setAuthError(null);
-    try {
-      const result = await signUpWithEmail(emailOrPhone, password, { full_name: name });
-      if (result.user && result.access_token) {
-        setCurrentUser({ id: result.user.id, name, email: emailOrPhone, phone: '', isVerified: true });
-        setIsAuthModalOpen(false);
-      } else {
-        setAuthError(t("تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيده ثم سجّل الدخول."));
-        setAuthMode('login');
-      }
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : t("تعذّر إنشاء الحساب."));
-    } finally { setIsSubmitting(false); }
+  const resetForm = () => {
+    setAuthError(null);
+    setAuthSuccess(null);
+    setEmailOrPhone('');
+    setName('');
+    setEmail('');
+    setPhone('');
+    setPassword('');
+    setOtpCode('');
+    setNewPassword('');
   };
 
+  const handleSwitchMode = (mode: 'login' | 'register' | 'forgot-password') => {
+    resetForm();
+    setAuthMode(mode);
+  };
+
+  // 1. Customer Login
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailOrPhone.includes('@') || !password) {
-      setAuthError(t("تسجيل الدخول يتطلب البريد الإلكتروني وكلمة المرور."));
-      return;
-    }
-    setIsSubmitting(true); setAuthError(null);
+    setIsSubmitting(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+
     try {
-      const user = await signInWithEmail(emailOrPhone, password);
-      setCurrentUser({
-        id: user.id,
-        name: String(user.user_metadata?.full_name || user.email?.split('@')[0] || ''),
-        email: user.email || emailOrPhone,
-        phone: String(user.phone || ''),
-        isVerified: Boolean(user.email_confirmed_at)
-      });
+      const user = await loginCustomer(emailOrPhone, password);
+      setCurrentUser(user);
       setIsAuthModalOpen(false);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : t("بيانات الدخول غير صحيحة."));
-    } finally { setIsSubmitting(false); }
+      resetForm();
+    } catch (err: any) {
+      setAuthError(err.message || t("بيانات الدخول غير صحيحة، يرجى المحاولة مجدداً."));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  // 2. Customer Registration
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true); setAuthError(null);
+    setIsSubmitting(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+
     try {
-      await requestPasswordReset(emailOrPhone);
-      setAuthError(t("إذا كان البريد مسجلًا، فسيصلك رابط استعادة كلمة المرور."));
-      setAuthMode('login');
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : t("تعذّر إرسال رابط الاستعادة."));
-    } finally { setIsSubmitting(false); }
+      const user = await registerCustomer({
+        name,
+        email,
+        phone,
+        password
+      });
+      setCurrentUser(user);
+      setIsAuthModalOpen(false);
+      resetForm();
+      alert(t("تم إنشاء حسابك وتسجيل دخولك بنجاح! مرحباً بك في مرتفعات ستور."));
+    } catch (err: any) {
+      setAuthError(err.message || t("تعذر إنشاء الحساب، يرجى التأكد من البيانات المدخلة."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 3. Password Recovery Request
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+
+    try {
+      const result = await startPasswordRecovery(emailOrPhone);
+      setAuthSuccess(result.message);
+      if (result.requiresOtp) {
+        setAuthMode('verify-otp');
+      } else {
+        setTimeout(() => handleSwitchMode('login'), 3000);
+      }
+    } catch (err: any) {
+      setAuthError(err.message || t("تعذر العثور على الحساب."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // 4. Verify OTP & Reset Password
+  const handleOtpResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setAuthError(null);
+
+    try {
+      const user = await verifyOtpAndResetPassword(otpCode, newPassword);
+      setCurrentUser(user);
+      setIsAuthModalOpen(false);
+      resetForm();
+      alert(t("تم تعيين كلمة المرور الجديدة وتسجيل دخولك بنجاح!"));
+    } catch (err: any) {
+      setAuthError(err.message || t("فشل التحقق من الرمز أو تعيين كلمة المرور."));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="relative bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-brand-gold/40 my-6 space-y-4">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+      <div className="relative bg-white dark:bg-zinc-900 text-black dark:text-white rounded-3xl max-w-md w-full p-5 sm:p-7 shadow-2xl border-2 border-brand-gold/40 my-auto space-y-4">
         
         {/* Header */}
-        {authError && <p role="alert" className="text-xs text-red-600 bg-red-50 rounded-xl p-3">{authError}</p>}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-brand-gold text-brand-black flex items-center justify-center font-bold">
-              <Lock className="w-4 h-4" />
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-brand-gold text-brand-black flex items-center justify-center font-bold shadow-md">
+              <Lock className="w-4 h-4 text-black" />
             </div>
-            <h3 className="font-black text-sm text-gray-900">
-              {authMode === 'login' ? t("تسجيل الدخول إلى حسابك") : 
-               authMode === 'register' ? t("إنشاء حساب جديد في المتجر") :
-               authMode === 'forgot-password' ? t("استعادة كلمة المرور") : t("تسجيل الدخول")}
-            </h3>
+            <div>
+              <h3 className="font-black text-sm text-gray-900 dark:text-white">
+                {authMode === 'login' ? t("تسجيل الدخول إلى حسابك") : 
+                 authMode === 'register' ? t("إنشاء حساب عميل جديد") :
+                 authMode === 'forgot-password' ? t("استعادة كلمة المرور") : t("تأكيد رمز التحقق")}
+              </h3>
+              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                {t("مرتفعات ستور - تجربة تسوق آمنة ومضمونة")}
+              </span>
+            </div>
           </div>
+
           <button
-            onClick={() => setIsAuthModalOpen(false)}
-            className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center"
+            type="button"
+            onClick={() => { setIsAuthModalOpen(false); resetForm(); }}
+            className="w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 text-gray-600 dark:text-gray-300 flex items-center justify-center transition-colors"
+            title={t("إغلاق")}
+            aria-label={t("إغلاق")}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* 1. LOGIN VIEW */}
+        {/* Status Alerts */}
+        {authError && (
+          <div role="alert" className="text-xs text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-3 font-medium">
+            {authError}
+          </div>
+        )}
+
+        {authSuccess && (
+          <div role="status" className="text-xs text-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl p-3 font-medium">
+            {authSuccess}
+          </div>
+        )}
+
+        {/* 1. LOGIN FORM */}
         {authMode === 'login' && (
-          <form onSubmit={handleLoginSubmit} className="space-y-3.5 text-xs">
+          <form onSubmit={handleLoginSubmit} className="space-y-3 text-xs">
             <div>
-              <label className="font-bold text-gray-700 block mb-1">{t("البريد الإلكتروني *")}</label>
-              <input
-                type="text"
-                required
-                placeholder={t("example@gmail.com")}
-                value={emailOrPhone}
-                onChange={(e) => setEmailOrPhone(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"
-              />
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                {t("البريد الإلكتروني أو رقم الهاتف *")}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  placeholder={t("example@gmail.com أو 010xxxxxxxx")}
+                  value={emailOrPhone}
+                  onChange={(e) => setEmailOrPhone(e.target.value)}
+                  className="w-full pl-3 pr-9 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none"
+                />
+                <UserIcon className="w-4 h-4 text-gray-400 absolute right-3 top-3" />
+              </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="font-bold text-gray-700">{t("كلمة المرور *")}</label>
+                <label className="font-bold text-gray-700 dark:text-gray-300">{t("كلمة المرور *")}</label>
                 <button
                   type="button"
-                  onClick={() => setAuthMode('forgot-password')}
-                  className="text-[11px] text-brand-goldDark font-bold hover:underline"
+                  onClick={() => handleSwitchMode('forgot-password')}
+                  className="text-[11px] text-brand-goldDark dark:text-brand-gold font-bold hover:underline"
                 >
-                  {t("هل نسيت كلمة المرور؟")}
+                  {t("نسيت كلمة المرور؟")}
                 </button>
               </div>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold focus:outline-none"
-              />
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-3 pr-9 py-2.5 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none font-mono"
+                />
+                <KeyRound className="w-4 h-4 text-gray-400 absolute right-3 top-3" />
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 rounded-xl bg-brand-black text-brand-gold font-black text-xs hover:bg-brand-gold hover:text-black transition-colors shadow-md"
+              className="w-full py-2.5 rounded-xl bg-brand-black text-brand-gold font-black text-xs hover:bg-brand-gold hover:text-black transition-colors shadow-md disabled:opacity-50"
             >
-              {t("تسجيل الدخول")}
+              {isSubmitting ? t("جاري التحقق...") : t("تسجيل الدخول")}
             </button>
 
-            <p className="text-center text-xs text-gray-500 pt-2">
-              {t("ليس لديك حساب بعد؟")}{' '}
+            <div className="pt-2 text-center border-t border-gray-100 dark:border-zinc-800">
+              <span className="text-gray-500 dark:text-gray-400">{t("عميل جديد؟")}{' '}</span>
               <button
                 type="button"
-                onClick={() => setAuthMode('register')}
-                className="text-brand-goldDark font-bold hover:underline"
+                onClick={() => handleSwitchMode('register')}
+                className="text-brand-goldDark dark:text-brand-gold font-bold hover:underline"
               >
-                {t("إنشاء حساب جديد")}
+                {t("إنشاء حساب جديد في ثوانٍ")}
               </button>
-            </p>
+            </div>
           </form>
         )}
 
-        {/* 2. REGISTER VIEW */}
+        {/* 2. REGISTRATION FORM */}
         {authMode === 'register' && (
-          <form onSubmit={handleRegisterSubmit} className="space-y-3.5 text-xs">
+          <form onSubmit={handleRegisterSubmit} className="space-y-3 text-xs">
             <div>
-              <label className="font-bold text-gray-700 block mb-1">{t("الاسم بالكامل *")}</label>
-              <input
-                type="text"
-                required
-                placeholder={t("مثال: أحمد محمود")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold"
-              />
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("الاسم الكامل *")}</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  placeholder={t("أحمد محمد")}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full pl-3 pr-9 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none"
+                />
+                <UserIcon className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
+              </div>
             </div>
 
             <div>
-              <label className="font-bold text-gray-700 block mb-1">{t("البريد الإلكتروني *")}</label>
-              <input
-                type="text"
-                required
-                placeholder={t("أدخل بريدك الإلكتروني لإنشاء حساب آمن")}
-                value={emailOrPhone}
-                onChange={(e) => setEmailOrPhone(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold"
-              />
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("رقم الهاتف (للتوصيل) *")}</label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  required
+                  placeholder="01012345678"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full pl-3 pr-9 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none font-mono"
+                />
+                <Phone className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
+              </div>
             </div>
 
             <div>
-              <label className="font-bold text-gray-700 block mb-1">{t("كلمة المرور *")}</label>
-              <input
-                type="password"
-                minLength={8}
-                required
-                placeholder={t("ثمانية أحرف على الأقل")}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold"
-              />
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("البريد الإلكتروني *")}</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  placeholder="name@gmail.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-3 pr-9 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none"
+                />
+                <Mail className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("كلمة المرور (6 أحرف فأكثر) *")}</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-3 pr-9 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none font-mono"
+                />
+                <KeyRound className="w-4 h-4 text-gray-400 absolute right-3 top-2.5" />
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 rounded-xl bg-gold-gradient text-brand-black font-black text-xs hover:brightness-105 shadow-md"
+              className="w-full py-2.5 rounded-xl bg-gold-gradient text-black font-black text-xs hover:brightness-105 transition-all shadow-md disabled:opacity-50"
             >
-              {t("إنشاء الحساب")}
+              {isSubmitting ? t("جاري تسجيل الحساب...") : t("تأكيد إنشاء الحساب")}
             </button>
 
-            <p className="text-center text-xs text-gray-500 pt-2">
-              {t("لديك حساب بالفعل؟")}{' '}
+            <div className="pt-2 text-center border-t border-gray-100 dark:border-zinc-800">
+              <span className="text-gray-500 dark:text-gray-400">{t("لديك حساب بالفعل؟")}{' '}</span>
               <button
                 type="button"
-                onClick={() => setAuthMode('login')}
-                className="text-brand-goldDark font-bold hover:underline"
+                onClick={() => handleSwitchMode('login')}
+                className="text-brand-goldDark dark:text-brand-gold font-bold hover:underline"
               >
                 {t("تسجيل الدخول")}
               </button>
-            </p>
+            </div>
           </form>
         )}
 
-        {/* 3. FORGOT PASSWORD VIEW */}
+        {/* 3. FORGOT PASSWORD (REQUEST) */}
         {authMode === 'forgot-password' && (
-          <form onSubmit={handleResetPassword} className="space-y-3.5 text-xs">
-            <p className="text-gray-600 leading-relaxed text-[11px]">
-              {t("أدخل بريدك الإلكتروني وسنرسل لك رابطًا آمنًا لاستعادة كلمة المرور:")}
+          <form onSubmit={handleRecoverySubmit} className="space-y-3 text-xs">
+            <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">
+              {t("أدخل بريدك الإلكتروني أو رقم هاتفك المسجل وسنرسل لك رمز تحقق مؤقت لاستعادة حسابك بأمان.")}
             </p>
-
             <div>
-              <label className="font-bold text-gray-700 block mb-1">{t("البريد أو رقم الهاتف *")}</label>
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("البريد أو الهاتف المسجل *")}</label>
               <input
                 type="text"
                 required
-                placeholder={t("أدخل بريدك المسجل...")}
+                placeholder="name@gmail.com أو 010xxxxxxxx"
                 value={emailOrPhone}
                 onChange={(e) => setEmailOrPhone(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-brand-gold"
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none"
               />
             </div>
-
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 rounded-xl bg-brand-black text-white font-bold text-xs hover:bg-brand-gold hover:text-black"
+              className="w-full py-2.5 rounded-xl bg-black text-brand-gold font-bold text-xs hover:bg-zinc-800 transition-colors shadow-md disabled:opacity-50"
             >
-              {t("إرسال رابط الاستعادة")}
+              {isSubmitting ? t("جاري الإرسال...") : t("إرسال رمز التحقق")}
             </button>
 
             <button
               type="button"
-              onClick={() => setAuthMode('login')}
-              className="text-gray-500 text-xs text-center block w-full hover:underline pt-1"
+              onClick={() => handleSwitchMode('login')}
+              className="w-full text-center text-gray-500 hover:text-black dark:hover:text-white text-[11px] font-bold"
             >
               {t("العودة لتسجيل الدخول")}
             </button>
           </form>
         )}
 
+        {/* 4. VERIFY OTP & RESET PASSWORD */}
+        {authMode === 'verify-otp' && (
+          <form onSubmit={handleOtpResetSubmit} className="space-y-3 text-xs">
+            <div>
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                {t("رمز التحقق (6 أرقام) *")}
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                placeholder="123456"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                className="w-full px-3 py-2 text-center text-lg tracking-widest font-mono font-bold rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                {t("كلمة المرور الجديدة *")}
+              </label>
+              <input
+                type="password"
+                required
+                placeholder={t("6 أحرف أو أرقام على الأقل")}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none font-mono"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-2.5 rounded-xl bg-gold-gradient text-black font-black text-xs hover:brightness-105 transition-all shadow-md disabled:opacity-50"
+            >
+              {isSubmitting ? t("جاري الحفظ...") : t("حفظ كلمة المرور والدخول")}
+            </button>
+          </form>
+        )}
 
       </div>
     </div>

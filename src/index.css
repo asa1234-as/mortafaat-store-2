@@ -58,32 +58,67 @@
   background: linear-gradient(135deg, #161B26 0%, #0A0D14 100%);
 }
 
-/* Print styles for invoice */
+/* Print styles for invoice - Single page strictly, zero duplicates */
 @media print {
-  body * {
-    visibility: hidden !important;
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
   }
-  #printable-invoice, #printable-invoice * {
-    visibility: visible !important;
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
   }
+
+  /* Hide header, footer, product sections and other overlays */
+  header, footer, main, .print-hide {
+    display: none !important;
+  }
+
+  .invoice-modal-backdrop {
+    background: transparent !important;
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .invoice-paper-wrapper {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
   #printable-invoice {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 20px;
-    background: white !important;
-    color: black !important;
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
+
   #printable-invoice img {
     filter: grayscale(1) contrast(2) !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  #printable-invoice canvas,
-  #printable-invoice svg {
-    visibility: visible !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+
+  #printable-invoice svg,
+  #printable-invoice canvas {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

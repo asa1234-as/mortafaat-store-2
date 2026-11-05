@@ -284,6 +284,30 @@ export const INITIAL_SETTINGS: StoreSettings = {
   announcementTextEn: '🔥 Grand Opening: Free Delivery on orders over 1000 EGP + Cash on Delivery with free inspection before payment! 🔥',
   sliderIntervalSeconds: 5,
   heroOverlayOpacity: 0.35,
+  announcementSpeedSeconds: 15,
+  announcementOffers: [
+    {
+      id: 'offer-1',
+      textAr: '🔥 عروض الافتتاح الكبرى: شحن مجاني لأي طلب أكثر من 1000 جنيه + معاينة وفحص مجاني قبل الدفع! 🚚',
+      textEn: '🔥 Grand Opening Mega Offers: Free Shipping on orders over 1000 EGP + Free Inspection before payment! 🚚',
+      isActive: true,
+      durationSeconds: 12
+    },
+    {
+      id: 'offer-2',
+      textAr: '🎁 خصم إضافي 10% عند استخدام الكوبون MORTAFAAT10 على جميع تشكيلات الموضة والأجهزة! ✨',
+      textEn: '🎁 Extra 10% OFF with coupon MORTAFAAT10 on all fashion & appliances collections! ✨',
+      isActive: true,
+      durationSeconds: 12
+    },
+    {
+      id: 'offer-3',
+      textAr: '🛡️ ضمان استرجاع واستبدال مجاني خلال 14 يوماً مع الدفع عند الاستلام كاش في كافة محافظات مصر 🇪🇬',
+      textEn: '🛡️ 14-Day Free Returns & Exchange with Cash on Delivery in all Egypt governorates 🇪🇬',
+      isActive: true,
+      durationSeconds: 12
+    }
+  ],
 
   // Trust Badges under Hero Banner
   trustBadges: [

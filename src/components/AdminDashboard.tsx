@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
-import { Product, Order, Coupon, BotKnowledgeRule, HeroSlide, Category, StoreSettings, StoreTrustBadge } from '../types';
+import { Product, Order, Coupon, BotKnowledgeRule, HeroSlide, Category, StoreSettings, StoreTrustBadge, AnnouncementOffer } from '../types';
 import { t } from '../i18n';
 import { isSupabaseConfigured, uploadProductImage, uploadMediaFile } from '../lib/supabase';
 import { AVAILABLE_CATEGORY_ICONS, renderDynamicIcon } from '../lib/iconMap';
@@ -156,6 +156,10 @@ export const AdminDashboard: React.FC = () => {
   const [newBadgeDescAr, setNewBadgeDescAr] = useState('');
   const [newBadgeDescEn, setNewBadgeDescEn] = useState('');
   const [newBadgeIcon, setNewBadgeIcon] = useState('ShieldCheck');
+  // Announcement Offers State (TASK 9)
+  const [newOfferTextAr, setNewOfferTextAr] = useState('');
+  const [newOfferTextEn, setNewOfferTextEn] = useState('');
+  const [newOfferDuration, setNewOfferDuration] = useState<number>(12);
 
   // Coupon State
   const [newCouponCode, setNewCouponCode] = useState('');
@@ -615,6 +619,118 @@ export const AdminDashboard: React.FC = () => {
     setNewBadgeDescAr('');
     setNewBadgeDescEn('');
     setNewBadgeIcon('ShieldCheck');
+  };
+
+  
+  // Announcement Offers Handlers (TASK 9)
+  const handleAddAnnouncementOffer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOfferTextAr.trim()) {
+      alert(t("يرجى كتابة نص الإعلان الترويجي بالعربي"));
+      return;
+    }
+    const newOffer: AnnouncementOffer = {
+      id: `offer_${Date.now()}`,
+      textAr: newOfferTextAr.trim(),
+      textEn: newOfferTextEn.trim() || newOfferTextAr.trim(),
+      isActive: true,
+      durationSeconds: Number(newOfferDuration) || 12
+    };
+
+    const currentOffers = tempSettings.announcementOffers || [];
+    const updated = [...currentOffers, newOffer];
+    setTempSettings({ ...tempSettings, announcementOffers: updated });
+    updateSettings({ ...tempSettings, announcementOffers: updated });
+    setNewOfferTextAr('');
+    setNewOfferTextEn('');
+  };
+
+  const handleToggleAnnouncementOffer = (offerId: string) => {
+    const currentOffers = tempSettings.announcementOffers || [];
+    const updated = currentOffers.map(o => o.id === offerId ? { ...o, isActive: !o.isActive } : o);
+    setTempSettings({ ...tempSettings, announcementOffers: updated });
+    updateSettings({ ...tempSettings, announcementOffers: updated });
+  };
+
+  const handleDeleteAnnouncementOffer = (offerId: string) => {
+    if (window.confirm(t("هل أنت متأكد من حذف هذا الإعلان الترويجي؟"))) {
+      const currentOffers = tempSettings.announcementOffers || [];
+      const updated = currentOffers.filter(o => o.id !== offerId);
+      setTempSettings({ ...tempSettings, announcementOffers: updated });
+      updateSettings({ ...tempSettings, announcementOffers: updated });
+    }
+  };
+
+  // Full Store Backup & Restore Handlers (TASK 12)
+  const exportStoreBackup = () => {
+    const backupData = {
+      version: '1.0.0',
+      exportedAt: new Date().toISOString(),
+      storeName: settings.storeNameAr,
+      products,
+      categories,
+      slides,
+      coupons,
+      orders,
+      settings,
+      botRules
+    };
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Mortafaat_Store_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert(t("تم تصدير النسخة الاحتياطية بنجاح وحفظها كملف JSON على جهازك."));
+  };
+
+  const importStoreBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (!data || typeof data !== 'object') {
+          throw new Error('ملف النسخة الاحتياطية غير صالح.');
+        }
+
+        if (window.confirm(t("هل أنت متأكد من استعادة هذه النسخة الاحتياطية؟ سيتم تحديث المنتجات والإعدادات وفقاً للنسخة المستعادة."))) {
+          if (Array.isArray(data.products)) {
+            localStorage.setItem('mortafaat_products_v2', JSON.stringify(data.products));
+          }
+          if (Array.isArray(data.categories)) {
+            localStorage.setItem('mortafaat_categories', JSON.stringify(data.categories));
+          }
+          if (Array.isArray(data.slides)) {
+            localStorage.setItem('mortafaat_slides', JSON.stringify(data.slides));
+          }
+          if (Array.isArray(data.coupons)) {
+            localStorage.setItem('mortafaat_coupons', JSON.stringify(data.coupons));
+          }
+          if (Array.isArray(data.orders)) {
+            localStorage.setItem('mortafaat_orders', JSON.stringify(data.orders));
+          }
+          if (data.settings && typeof data.settings === 'object') {
+            updateSettings(data.settings);
+            setTempSettings(data.settings);
+          }
+          if (Array.isArray(data.botRules)) {
+            localStorage.setItem('mortafaat_bot_rules', JSON.stringify(data.botRules));
+          }
+          alert(t("تمت استعادة النسخة الاحتياطية بنجاح! سيتم إعادة تحميل الصفحة لتطبيق البيانات."));
+          window.location.reload();
+        }
+      } catch (err: any) {
+        alert(t("فشل استعادة النسخة الاحتياطية: ") + (err.message || 'الملف تالف'));
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleDeleteTrustBadge = (id: string) => {
@@ -2349,6 +2465,180 @@ export const AdminDashboard: React.FC = () => {
                   )}
                 </button>
               </form>
+            </div>
+
+            {/* TASK 9: PROMOTIONAL ANNOUNCEMENT OFFERS MANAGEMENT */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-red-600" />
+                  <div>
+                    <h3 className="text-base font-black text-black dark:text-white">{t("إدارة العروض الترويجية وعروض الافتتاح (شريط الإعلانات المتحرك)")}</h3>
+                    <p className="text-xs text-gray-500">{t("تحكم بالعروض التي تظهر في الشريط المتحرك أعلى واجهة المتجر والهاتف")}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-amber-50 dark:bg-zinc-800 p-2 rounded-xl border border-amber-200 dark:border-zinc-700">
+                  <Timer className="w-4 h-4 text-brand-goldDark" />
+                  <span className="text-xs font-bold">{t("مدة ظهور العرض:")}</span>
+                  <select
+                    value={tempSettings.announcementSpeedSeconds || 12}
+                    onChange={(e) => {
+                      const speed = Number(e.target.value);
+                      setTempSettings({ ...tempSettings, announcementSpeedSeconds: speed });
+                      updateSettings({ ...tempSettings, announcementSpeedSeconds: speed });
+                    }}
+                    className="text-xs font-bold rounded-lg border border-gray-300 dark:border-zinc-600 dark:bg-zinc-900 px-2 py-1"
+                  >
+                    <option value={6}>6 {t("ثوانٍ (سريع)")}</option>
+                    <option value={10}>10 {t("ثوانٍ")}</option>
+                    <option value={14}>14 {t("ثانية (متوسط)")}</option>
+                    <option value={20}>20 {t("ثانية")}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {(tempSettings.announcementOffers || []).map((offer) => (
+                  <div 
+                    key={offer.id} 
+                    className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+                      offer.isActive 
+                        ? 'bg-amber-50/50 dark:bg-zinc-800/80 border-amber-300 dark:border-amber-700/60' 
+                        : 'bg-gray-50 dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 opacity-60'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          offer.isActive ? 'bg-emerald-600 text-white' : 'bg-gray-400 text-white'
+                        }`}>
+                          {offer.isActive ? t("نشط ومفعل ✓") : t("معطل")}
+                        </span>
+                        <span className="text-[10px] font-mono text-gray-500">
+                          {t("مدة العرض: {0} ثانية", offer.durationSeconds || 12)}
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-gray-900 dark:text-white">{offer.textAr}</p>
+                      {offer.textEn && <p className="text-[11px] font-sans text-gray-500">{offer.textEn}</p>}
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAnnouncementOffer(offer.id)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors ${
+                          offer.isActive 
+                            ? 'bg-amber-600/20 text-amber-900 dark:text-amber-300 hover:bg-amber-600/30' 
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        }`}
+                      >
+                        {offer.isActive ? t("تعطيل") : t("تفعيل")}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAnnouncementOffer(offer.id)}
+                        className="p-1.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                        title={t("حذف")}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <form onSubmit={handleAddAnnouncementOffer} className="p-4 rounded-2xl bg-gray-50 dark:bg-zinc-800/40 border border-gray-200 dark:border-zinc-800 space-y-3">
+                <h4 className="text-xs font-bold text-brand-goldDark dark:text-brand-gold flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  <span>{t("إضافة إعلان ترويجي أو عرض افتتاح جديد:")}</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="font-bold block mb-1">{t("نص الإعلان بالعربي *")}</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder={t("مثال: خصم 20% على الأحذية الرياضية بكود SPORT20")}
+                      value={newOfferTextAr}
+                      onChange={(e) => setNewOfferTextAr(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">{t("نص الإعلان بالإنجليزي (اختياري)")}</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 20% OFF on sports shoes with code SPORT20"
+                      value={newOfferTextEn}
+                      onChange={(e) => setNewOfferTextEn(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 text-xs text-left"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-black dark:bg-white text-white dark:text-black font-black text-xs hover:bg-brand-gold hover:text-black transition-colors"
+                >
+                  {t("+ إضافة العرض إلى الشريط")}
+                </button>
+              </form>
+            </div>
+
+            {/* TASK 12: FULL STORE BACKUP & RESTORATION CENTER */}
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-800 shadow-sm p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-2 text-brand-goldDark">
+                <Download className="w-5 h-5 text-brand-goldDark" />
+                <div>
+                  <h3 className="text-base font-black text-black dark:text-white">{t("مركز النسخ الاحتياطي واستعادة البيانات (Backup & Restore)")}</h3>
+                  <p className="text-xs text-gray-500">{t("حفظ نسخة كاملة من المنتجات، الطلبات، الكوبونات، والإعدادات واستعادتها بضغطة زر")}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-zinc-800/60 border border-amber-200 dark:border-zinc-700 space-y-2.5">
+                  <h4 className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <Download className="w-4 h-4 text-brand-goldDark" />
+                    <span>{t("تصدير نسخة احتياطية فورية (JSON Snapshot)")}</span>
+                  </h4>
+                  <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                    {t("يقوم بتوليد ملف JSON رسمي يتضمن كافة المنتجات، الأقسام، الكوبونات، الطلبات، إعدادات المتجر، وقواعد البوت الذكي.")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={exportStoreBackup}
+                    className="w-full py-2.5 rounded-xl bg-black text-brand-gold font-black text-xs hover:bg-zinc-800 transition-colors shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{t("تحميل النسخة الاحتياطية الآن")}</span>
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-gray-200 dark:border-zinc-700 space-y-2.5">
+                  <h4 className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-emerald-600" />
+                    <span>{t("استعادة المتجر من نسخة سابقة")}</span>
+                  </h4>
+                  <p className="text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed">
+                    {t("اختر ملف النسخة الاحتياطية (JSON) المحفوظ على جهازك لاستعادة كافة بيانات المتجر بدقة وأمان تام.")}
+                  </p>
+                  <label className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer">
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{t("رفع ملف النسخة الاحتياطية (Restore)")}</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={importStoreBackup}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
             </div>
 
             {/* Admin Role & Security Center */}

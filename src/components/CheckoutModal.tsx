@@ -15,7 +15,8 @@ import {
   FileText, 
   Printer, 
   User as UserIcon,
-  AlertCircle
+  AlertCircle,
+  ShoppingCart
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { t } from '../i18n';
@@ -285,26 +286,61 @@ export const CheckoutModal: React.FC = () => {
               </button>
             </div>
           </div>
+        ) : !currentUser ? (
+          /* Mandatory Customer Authentication Screen (TASK 8) */
+          <div className="p-6 text-center space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="w-16 h-16 rounded-3xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-brand-gold flex items-center justify-center mx-auto shadow-inner border border-amber-300 dark:border-amber-700">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                {t("تسجيل الدخول مطلوب لإتمام الشراء")}
+              </h3>
+              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 max-w-sm mx-auto leading-relaxed">
+                {t("لضمان حقوقك في فحص ومعاينة المنتج قبل الدفع، ومتابعة شحنتك، وإصدار الفاتورة الرسمية باسمك، يرجى تسجيل الدخول أو إنشاء حساب جديد.")}
+              </p>
+            </div>
+
+            {/* Preserved Cart Notice */}
+            <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-start text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <ShoppingCart className="w-5 h-5 text-brand-gold flex-shrink-0" />
+                <div>
+                  <span className="font-bold block text-gray-900 dark:text-white">{t("مشترياتك وسلتك محفوظة بالكامل")}</span>
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {t("العدد: {0} منتجات | الإجمالي: {1} ج.م", cartCount, cartFinalTotal)}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+                {t("محفوظة")}
+              </span>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full py-3 rounded-2xl bg-brand-black text-brand-gold hover:bg-brand-gold hover:text-black font-black text-xs transition-colors shadow-lg flex items-center justify-center gap-2 border border-brand-gold/40"
+              >
+                <UserIcon className="w-4 h-4" />
+                <span>{t("تسجيل الدخول إلى حسابك")}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full py-3 rounded-2xl bg-gold-gradient text-black font-black text-xs hover:brightness-105 transition-all shadow-md flex items-center justify-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>{t("إنشاء حساب عميل جديد (سريع)")}</span>
+              </button>
+            </div>
+          </div>
         ) : (
           /* Checkout Form View */
           <form onSubmit={handleSubmitOrder} className="p-4 sm:p-6 space-y-4 max-h-[85vh] overflow-y-auto">
-            
-            {/* Optional Customer Sign-in Notice */}
-            {!currentUser && (
-              <div className="p-3 bg-amber-50 dark:bg-zinc-800 rounded-2xl border border-amber-300 dark:border-zinc-700 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-brand-goldDark" />
-                  <span>{t("لتسجيل بيانات طلبك وحفظ فواتيرك بحسابك، يمكنك تسجيل الدخول:")}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-brand-black text-brand-gold font-bold text-xs hover:bg-brand-gold hover:text-black transition-colors"
-                >
-                  {t("تسجيل الدخول")}
-                </button>
-              </div>
-            )}
 
             {submitError && (
               <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 text-xs font-bold flex items-center gap-2">

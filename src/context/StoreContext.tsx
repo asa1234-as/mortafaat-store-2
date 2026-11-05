@@ -25,6 +25,7 @@ import {
   subscribeToOrders
 } from '../lib/supabase';
 import { t, setCurrentLanguage, locale } from '../i18n';
+import { getSavedCustomerSession } from '../lib/authService';
 import { 
   Product, 
   Category, 
@@ -198,15 +199,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // User Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const session = getSupabaseSession();
-    if (!session) return null;
-    return {
-      id: session.user.id,
-      name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
-      email: session.user.email || '',
-      phone: session.user.phone || '',
-      role: session.user.role || 'customer',
-      isVerified: true
-    };
+    if (session) {
+      return {
+        id: session.user.id,
+        name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+        email: session.user.email || '',
+        phone: session.user.phone || '',
+        role: session.user.role || 'customer',
+        isVerified: true
+      };
+    }
+    return getSavedCustomerSession();
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
