@@ -23,12 +23,17 @@
 
 `CLOUDFLARE_API_TOKEN`
 
-لإنشائه:
-1. من Cloudflare افتح **My Profile → API Tokens → Create Token**.
-2. أنشئ Token مخصصًا للنشر، وليس Global API Key.
-3. امنحه صلاحية تعديل Workers Scripts، وصلاحية قراءة/ربط R2 على الحساب الذي يحتوي Bucket `mortafaat-store-media`. اختر الحساب نفسه فقط، وقلّل الصلاحيات قدر الإمكان.
-4. انسخ قيمة Token مرة واحدة.
-5. في GitHub افتح **Settings → Secrets and variables → Actions → New repository secret**، وسمّه `CLOUDFLARE_API_TOKEN` وضع القيمة هناك فقط. لا ترسلها في المحادثة ولا تضعها في ملفات المشروع.
+### الخطوات الآمنة الأقل صلاحية
+
+1. من Cloudflare افتح **Workers & Pages** وأنشئ Worker فارغًا باسم `mortafaat-store-admin` (قالب Hello World يكفي) حتى يصبح موجودًا قبل إصدار صلاحية النشر.
+2. افتح **Manage Account → Account API Tokens → Create Token**.
+3. أنشئ Token بصلاحية **Workers Editor**، وقيّده بالـWorkerين الموجودين فقط:
+   - `mortafaat-store-2new`
+   - `mortafaat-store-admin`
+4. لا تضف صلاحيات R2 منفصلة لمجرد ربط الـBucket بالـWorker؛ صلاحية تعديل الـWorker تكفي لنشر binding موجود. صلاحيات R2 S3 المنفصلة مطلوبة فقط لنسخ قواعد البيانات الاحتياطية.
+5. انسخ قيمة Token مرة واحدة، ثم في GitHub افتح **Settings → Secrets and variables → Actions → New repository secret**، وسمّه `CLOUDFLARE_API_TOKEN` وضع القيمة هناك فقط. لا ترسلها في المحادثة ولا تضعها في ملفات المشروع.
+
+إذا لم يكن Worker الإدارة قد أُنشئ مسبقًا، فإن إنشاء Worker جديد يحتاج صلاحية Workers Admin على مستوى المنتج. لذلك نفضّل إنشاء Worker الفارغ أولًا، ثم استخدام Token محدود بصلاحية Editor على هذين الـWorkerين.
 
 إذا لم يكن السر موجودًا، يتخطى النشر بأمان ولا يوقف اختبارات المشروع. بعد إضافته، شغّل Workflow **Deploy customer and admin Workers** يدويًا من تبويب Actions.
 
