@@ -188,9 +188,6 @@ export const AdminDashboard: React.FC = () => {
   const [tempSettings, setTempSettings] = useState<StoreSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    setTempSettings(settings);
-  }, [settings]);
 
   // Guard: Admin Authentication Enforcement
   if (!isAdminAuthenticated) {
