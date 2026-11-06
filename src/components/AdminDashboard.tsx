@@ -679,6 +679,36 @@ export const AdminDashboard: React.FC = () => {
     updateSettings({ ...tempSettings, announcementOffers: updated });
   };
 
+  const handleEditAnnouncementOffer = (offerId: string) => {
+    const offers = tempSettings.announcementOffers || [];
+    const offer = offers.find(item => item.id === offerId);
+    if (!offer) return;
+
+    const textAr = window.prompt(t("نص العرض بالعربي"), offer.textAr);
+    if (textAr === null || !textAr.trim()) return;
+    const textEn = window.prompt(t("نص العرض بالإنجليزي"), offer.textEn || '');
+    if (textEn === null) return;
+    const durationInput = window.prompt(t("مدة العرض بالثواني"), String(offer.durationSeconds || 12));
+    if (durationInput === null) return;
+    const durationSeconds = Number(durationInput);
+    if (!Number.isFinite(durationSeconds) || durationSeconds < 3 || durationSeconds > 120) {
+      alert(t("مدة العرض يجب أن تكون بين 3 و120 ثانية."));
+      return;
+    }
+
+    const nextSettings = {
+      ...tempSettings,
+      announcementOffers: offers.map(item => item.id === offerId ? {
+        ...item,
+        textAr: textAr.trim(),
+        textEn: textEn.trim() || textAr.trim(),
+        durationSeconds
+      } : item)
+    };
+    setTempSettings(nextSettings);
+    updateSettings(nextSettings);
+  };
+
   const handleDeleteAnnouncementOffer = (offerId: string) => {
     if (window.confirm(t("هل أنت متأكد من حذف هذا الإعلان الترويجي؟"))) {
       const currentOffers = tempSettings.announcementOffers || [];
@@ -758,6 +788,34 @@ export const AdminDashboard: React.FC = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleEditTrustBadge = (id: string) => {
+    const badges = tempSettings.trustBadges || [];
+    const badge = badges.find(item => item.id === id);
+    if (!badge) return;
+
+    const titleAr = window.prompt(t("العنوان بالعربي"), badge.titleAr);
+    if (titleAr === null || !titleAr.trim()) return;
+    const titleEn = window.prompt(t("العنوان بالإنجليزي"), badge.titleEn || titleAr);
+    if (titleEn === null) return;
+    const descAr = window.prompt(t("الوصف بالعربي"), badge.descAr || '');
+    if (descAr === null) return;
+    const descEn = window.prompt(t("الوصف بالإنجليزي"), badge.descEn || '');
+    if (descEn === null) return;
+
+    const nextSettings = {
+      ...tempSettings,
+      trustBadges: badges.map(item => item.id === id ? {
+        ...item,
+        titleAr: titleAr.trim(),
+        titleEn: titleEn.trim(),
+        descAr: descAr.trim() || undefined,
+        descEn: descEn.trim() || undefined
+      } : item)
+    };
+    setTempSettings(nextSettings);
+    updateSettings(nextSettings);
   };
 
   const handleDeleteTrustBadge = (id: string) => {
@@ -2425,6 +2483,14 @@ export const AdminDashboard: React.FC = () => {
 
                         <button
                           type="button"
+                          onClick={() => handleEditTrustBadge(b.id)}
+                          className="p-1.5 text-gray-400 hover:text-brand-goldDark rounded-lg"
+                          title={t("تعديل")}
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleDeleteTrustBadge(b.id)}
                           className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg"
                           title={t("حذف")}
@@ -2563,6 +2629,14 @@ export const AdminDashboard: React.FC = () => {
                         {offer.isActive ? t("تعطيل") : t("تفعيل")}
                       </button>
 
+                      <button
+                        type="button"
+                        onClick={() => handleEditAnnouncementOffer(offer.id)}
+                        className="p-1.5 rounded-xl text-gray-400 hover:text-brand-goldDark hover:bg-amber-50 dark:hover:bg-zinc-800 transition-colors"
+                        title={t("تعديل")}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteAnnouncementOffer(offer.id)}
