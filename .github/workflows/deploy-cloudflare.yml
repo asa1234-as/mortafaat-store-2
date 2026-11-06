@@ -12,6 +12,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Re-deploy both Workers after the repository deployment secret is configured.
       - name: Check Cloudflare deployment token
         id: credentials
         shell: bash
