@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signOutSupabase } from '../lib/supabase';
 import { useStore } from '../context/StoreContext';
 import { t } from '../i18n';
@@ -14,7 +14,6 @@ import {
   User as UserIcon,
   LogOut,
   ShieldCheck,
-  Lock,
   Store,
   Download
 } from 'lucide-react';
@@ -43,24 +42,29 @@ export const Header: React.FC = () => {
   } = useStore();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [pinError, setPinError] = useState(false);
 
-  const handleAdminAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    void loginAdmin(adminEmail, adminPassword).then((success) => {
-      if (success) {
-        setIsAdminPinModalOpen(false);
-        setAdminEmail('');
-        setAdminPassword('');
-        setPinError(false);
-      } else {
-        setPinError(true);
-      }
-    });
-  };
+  // Active Promotional Offers for Ticker (TASK 9)
+  const activeOffers = (settings.announcementOffers && settings.announcementOffers.length > 0)
+    ? settings.announcementOffers.filter(o => o.isActive)
+    : [];
+
+  const [currentOfferIdx, setCurrentOfferIdx] = useState(0);
+
+  useEffect(() => {
+    if (activeOffers.length <= 1) return;
+    const intervalMs = Math.max(3000, (settings.announcementSpeedSeconds || 8) * 1000);
+    const timer = setInterval(() => {
+      setCurrentOfferIdx(prev => (prev + 1) % activeOffers.length);
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [activeOffers.length, settings.announcementSpeedSeconds]);
+
+  const activeOffer = activeOffers.length > 0 ? activeOffers[currentOfferIdx] : null;
+  const currentAnnouncementText = activeOffer
+    ? (language === 'ar' ? activeOffer.textAr : (activeOffer.textEn || activeOffer.textAr))
+    : (language === 'ar' 
+        ? (settings.announcementTextAr || settings.announcementText) 
+        : (settings.announcementTextEn || settings.announcementTextAr || settings.announcementText));
 
   // If in Admin Dashboard view
   if (currentView === 'admin') {
@@ -108,29 +112,118 @@ export const Header: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 bg-[#0A0D14] dark:bg-[#06080D] text-white shadow-xl border-b border-brand-gold/30 transition-colors">
       
-      {/* 1. TOP ANNOUNCEMENT & UTILITIES BAR */}
-      <div className="bg-gradient-to-r from-amber-600 via-brand-gold to-amber-600 text-black px-4 py-1.5 text-xs font-bold flex items-center justify-between">
+      {/* ========================================================= */}
+      {/* 1. MOBILE HEADER ARRANGEMENT (TASK 10) */}
+      {/* 1. Promotional announcement bar at the top */}
+      {/* 2. Single row with Language selector, Dark/Light mode toggle, Customer login/account */}
+      {/* ========================================================= */}
+      <div className="block sm:hidden">
+        
+        {/* Layer 1: Moving Promotional Announcement Bar at top (TASK 9 & 10) */}
+        <div className="bg-gradient-to-r from-amber-600 via-brand-gold to-amber-600 text-black px-3 py-1.5 text-xs font-black flex items-center justify-center text-center overflow-hidden shadow-inner">
+          <div className="flex items-center gap-1.5 animate-pulse truncate max-w-full">
+            <Flame className="w-3.5 h-3.5 text-red-700 flex-shrink-0" />
+            <span className="truncate">{currentAnnouncementText}</span>
+          </div>
+        </div>
+
+        {/* Layer 2: Single Row with Language, Mode Toggle, Customer Account (TASK 10) */}
+        <div className="bg-[#121622] text-gray-200 px-3 py-1.5 flex items-center justify-between text-xs border-b border-brand-gold/20">
+          
+          {/* Language Selector */}
+          <div className="flex items-center">
+            {language === 'ar' ? (
+              <button 
+                onClick={() => setLanguage('en')}
+                className="flex items-center gap-1 bg-black/40 hover:bg-black/60 px-2 py-0.5 rounded-full text-[11px] font-bold text-white transition-all border border-white/20"
+                title="Switch to English"
+              >
+                <img 
+                  src="https://flagcdn.com/w40/us.png" 
+                  alt="US" 
+                  className="w-3.5 h-3.5 rounded-full object-cover" 
+                />
+                <span className="font-sans">English</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => setLanguage('ar')}
+                className="flex items-center gap-1 bg-black/40 hover:bg-black/60 px-2 py-0.5 rounded-full text-[11px] font-bold text-white transition-all border border-white/20"
+                title="التحويل للغة العربية"
+              >
+                <img 
+                  src="https://flagcdn.com/w40/eg.png" 
+                  alt="EG" 
+                  className="w-3.5 h-3.5 rounded-full object-cover" 
+                />
+                <span>العربية</span>
+              </button>
+            )}
+          </div>
+
+          {/* Customer Login / Account Button (Center) */}
+          <div className="flex items-center">
+            {currentUser ? (
+              <div className="flex items-center gap-1 bg-amber-500/20 text-brand-gold border border-brand-gold/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                <UserIcon className="w-3 h-3 text-brand-gold" />
+                <span className="max-w-[90px] truncate">{currentUser.name}</span>
+                <button
+                  onClick={() => { void signOutSupabase(); setCurrentUser(null); }}
+                  className="text-red-400 hover:text-red-300 mr-1 text-[10px] font-black"
+                  title={t("تسجيل الخروج")}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-1 bg-brand-gold text-brand-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-transform active:scale-95 shadow-sm"
+              >
+                <UserIcon className="w-3 h-3 text-black" />
+                <span>{t("تسجيل الدخول")}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Dark / Light Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="w-6 h-6 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-all border border-white/20"
+            title={theme === 'light' ? t("التحويل للوضع الليلي الداكن") : t("التحويل للوضع النهاري الفاتح")}
+            aria-label={t("تبديل مظهر المتجر")}
+          >
+            {theme === 'light' ? (
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
+            ) : (
+              <Moon className="w-3.5 h-3.5 text-brand-gold" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* 2. DESKTOP / TABLET TOP BAR */}
+      {/* ========================================================= */}
+      <div className="hidden sm:flex bg-gradient-to-r from-amber-600 via-brand-gold to-amber-600 text-black px-4 py-1.5 text-xs font-bold items-center justify-between">
         
         {/* Customer Service & Phone */}
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Phone className="w-3.5 h-3.5" />
           <span>{t("خدمة العملاء:")} {settings.phone}</span>
         </div>
 
-        {/* Dynamic Announcement (Bilingual) */}
-        <div className="mx-auto flex items-center gap-2 text-center truncate px-2">
-          <span>
-            {language === 'ar' 
-              ? (settings.announcementTextAr || settings.announcementText)
-              : (settings.announcementTextEn || settings.announcementTextAr || settings.announcementText)}
-          </span>
+        {/* Dynamic Moving Announcement (TASK 9) */}
+        <div className="mx-auto flex items-center gap-2 text-center truncate px-4">
+          <Flame className="w-4 h-4 text-red-700 animate-pulse flex-shrink-0" />
+          <span className="font-extrabold truncate">{currentAnnouncementText}</span>
         </div>
 
-        {/* Top Controls: Language + Theme Toggle + User Auth + Owner Portal */}
+        {/* Desktop Controls: Language + Theme Toggle + User Auth + Admin */}
         <div className="flex items-center gap-3 flex-shrink-0">
           
-          {/* Language Switcher (Egypt Flag 🇪🇬 vs US Flag 🇺🇸) */}
-          <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-full text-[11px]">
+          {/* Language Switcher */}
+          <div className="flex items-center gap-1.5 bg-black/20 px-2.5 py-0.5 rounded-full text-[11px]">
             {language === 'ar' ? (
               <button 
                 onClick={() => setLanguage('en')}
@@ -160,7 +253,7 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Theme Toggle: Sun vs Moon (Dream 2000 Style) */}
+          {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             className="w-7 h-7 rounded-full bg-black/25 hover:bg-black/40 text-black flex items-center justify-center transition-all"
@@ -176,9 +269,9 @@ export const Header: React.FC = () => {
           {/* User Account Login / Profile */}
           <div className="flex items-center">
             {currentUser ? (
-              <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-full text-[11px]">
+              <div className="flex items-center gap-1.5 bg-black/20 px-2.5 py-0.5 rounded-full text-[11px]">
                 <UserIcon className="w-3.5 h-3.5 text-black" />
-                <span className="font-bold max-w-[80px] truncate">{currentUser.name}</span>
+                <span className="font-bold max-w-[100px] truncate">{currentUser.name}</span>
                 <button
                   onClick={() => { void signOutSupabase(); setCurrentUser(null); }}
                   className="text-red-900 hover:text-red-700 mr-1 text-[10px] font-black"
@@ -198,40 +291,28 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Private Admin & ZIP Tools (Excluded in Public Client Production Build) */}
+          {/* Admin portal trigger (Local Preview Only) */}
           {!(import.meta.env.VITE_PUBLIC_BUILD === 'true' || import.meta.env.MODE === 'public') && (
-            <>
-              {/* Download Source Code ZIP Link (Local Preview Only) */}
-              <a
-                href="http://localhost:3005/Mortafaat_Store_Fixed_Final.zip"
-                download="Mortafaat_Store_Fixed_Final.zip"
-                className="flex items-center gap-1 bg-black/25 hover:bg-black/40 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
-                title={t("تحميل كود المتجر كاملاً كملف مضغوط ZIP")}
-              >
-                <Download className="w-3 h-3" />
-                <span>{t("تحميل ZIP")}</span>
-              </a>
-
-              {/* Owner Secret Admin Suite Trigger (Direct 1-Click for Local Preview) */}
-              <button
-                onClick={() => void loginAdmin()}
-                className="flex items-center gap-1 bg-black/30 hover:bg-black/50 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
-                title={t("لوحة تحكم الإدارة (معاينة تجريبية فورية)")}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>{t("لوحة الإدارة")}</span>
-              </button>
-            </>
+            <button
+              onClick={() => void loginAdmin()}
+              className="flex items-center gap-1 bg-black/30 hover:bg-black/50 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
+              title={t("لوحة تحكم الإدارة")}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{t("لوحة الإدارة")}</span>
+            </button>
           )}
 
         </div>
       </div>
 
-      {/* 2. MAIN HEADER (Logo, Search, Cart, WhatsApp) */}
+      {/* ========================================================= */}
+      {/* 3. MAIN HEADER (Logo, Search, Cart, WhatsApp) */}
+      {/* ========================================================= */}
       <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
         <div className="flex items-center justify-between gap-3 md:gap-6">
           
-          {/* Brand Logo & Name (All White, Turns Gold on Click) */}
+          {/* Brand Logo & Name */}
           <div 
             onClick={() => setSelectedCategory('all')}
             className="flex items-center gap-3 cursor-pointer group flex-shrink-0"
@@ -244,7 +325,6 @@ export const Header: React.FC = () => {
               />
             </div>
             <div>
-              {/* BRAND TEXT: Entirely White, turns Golden Yellow upon click/hover */}
               <span className="text-xl md:text-2xl font-black tracking-tight text-white group-hover:text-amber-400 group-active:text-amber-400 transition-colors">
                 {t("مرتفعات ستور")}
               </span>
@@ -254,7 +334,7 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Desktop Search Bar */}
           <div className="flex-1 max-w-2xl hidden md:block">
             <div className="relative flex items-center">
               <input
@@ -309,6 +389,7 @@ export const Header: React.FC = () => {
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-zinc-800 text-gray-300 border border-zinc-700"
+              aria-label={t("القائمة")}
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -330,7 +411,7 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. CATEGORIES NAVIGATION BAR (Dynamic from categories state!) */}
+      {/* 4. CATEGORIES NAVIGATION BAR */}
       <div className="bg-zinc-900 dark:bg-zinc-950 border-t border-zinc-800 hidden md:block">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between overflow-x-auto py-2 scrollbar-none">
@@ -363,25 +444,19 @@ export const Header: React.FC = () => {
                 );
               })}
             </div>
-
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full animate-pulse">
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                {t("تخفيضات كبرى 2026")}
-              </span>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-zinc-900 border-t border-zinc-800 px-4 py-4 space-y-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t("أقسام المتجر:")}</p>
+        <div className="md:hidden bg-zinc-900 border-t border-zinc-800 p-4 space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => { setSelectedCategory('all'); setMobileMenuOpen(false); }}
-              className={`p-2.5 rounded-lg text-xs font-semibold ${selectedCategory === 'all' ? 'bg-brand-gold text-black font-bold' : 'bg-zinc-800 text-gray-200'}`}
+              className={`p-2.5 rounded-xl text-xs font-bold text-center ${
+                selectedCategory === 'all' ? 'bg-brand-gold text-black' : 'bg-zinc-800 text-gray-200'
+              }`}
             >
               {t("جميع الأقسام")}
             </button>
@@ -389,65 +464,26 @@ export const Header: React.FC = () => {
               <button
                 key={cat.id}
                 onClick={() => { setSelectedCategory(cat.id); setMobileMenuOpen(false); }}
-                className={`p-2.5 rounded-lg text-xs font-semibold ${selectedCategory === cat.id ? 'bg-brand-gold text-black font-bold' : 'bg-zinc-800 text-gray-200'}`}
+                className={`p-2.5 rounded-xl text-xs font-bold text-center truncate ${
+                  selectedCategory === cat.id ? 'bg-brand-gold text-black' : 'bg-zinc-800 text-gray-200'
+                }`}
               >
                 {language === 'ar' ? cat.nameAr : cat.nameEn}
               </button>
             ))}
           </div>
+
+          <a
+            href={`https://wa.me/${settings.whatsapp}`}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2"
+          >
+            <Phone className="w-4 h-4" />
+            <span>{t("واتساب خدمة العملاء: {0}", settings.phone)}</span>
+          </a>
         </div>
       )}
-
-      {/* Admin PIN Authentication Modal (Triggered by Top Owner Icon) */}
-      {isAdminPinModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 text-white rounded-3xl max-w-sm w-full p-6 border border-brand-gold/40 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-700 pb-3">
-              <div className="flex items-center gap-2">
-                <Lock className="w-5 h-5 text-brand-gold" />
-                <h3 className="font-black text-sm text-white">{t("تسجيل دخول مالك المتجر")}</h3>
-              </div>
-              <button onClick={() => setIsAdminPinModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
-            </div>
-
-            <p className="text-xs text-gray-300">
-              {t("سجّل الدخول ببريد إلكتروني وكلمة مرور لحساب مُعيّن بدور مدير في Supabase:")}
-            </p>
-
-            <form onSubmit={handleAdminAuth} className="space-y-3">
-              <input
-                type="email"
-                required
-                autoFocus
-                placeholder={t("البريد الإلكتروني للمدير")}
-                value={adminEmail}
-                onChange={(e) => { setAdminEmail(e.target.value); setPinError(false); }}
-                className="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-white text-sm focus:border-brand-gold focus:outline-none"
-              />
-              <input
-                type="password"
-                required
-                placeholder={t("كلمة المرور")}
-                value={adminPassword}
-                onChange={(e) => { setAdminPassword(e.target.value); setPinError(false); }}
-                className="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-white text-sm focus:border-brand-gold focus:outline-none"
-              />
-
-              {pinError && (
-                <p className="text-red-400 text-xs font-bold text-center">{t("تعذّر تسجيل الدخول أو لا يملك الحساب صلاحية الإدارة.")}</p>
-              )}
-
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-gold-gradient text-brand-black font-extrabold text-xs shadow-md hover:brightness-105 transition-all"
-              >
-                {t("دخول إلى لوحة التحكم")}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
     </header>
   );
 };
