@@ -1,0 +1,103 @@
+name: Encrypted Supabase backup to Cloudflare R2
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check backup credentials
+        id: credentials
+        shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          if [[ -n "$SUPABASE_DB_URL" && -n "$R2_ACCESS_KEY_ID" && -n "$R2_SECRET_ACCESS_KEY" && -n "$BACKUP_ENCRYPTION_PASSPHRASE" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Backup skipped. Add the four required Actions secrets described in docs/automated-backups.md."
+          fi
+
+      - name: Set up Node.js
+        if: steps.credentials.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install backup tools
+        if: steps.credentials.outputs.configured == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y awscli gnupg
+
+      - name: Export Supabase roles, schema, and data
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f "$RUNNER_TEMP/roles.sql" --role-only
+          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f "$RUNNER_TEMP/schema.sql"
+          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f "$RUNNER_TEMP/data.sql" --use-copy --data-only
+          echo "BACKUP_TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
+
+      - name: Encrypt and archive backup
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/mortafaat-database-$BACKUP_TIMESTAMP.tar.gz"
+          ENCRYPTED="$ARCHIVE.gpg"
+          PASSPHRASE_FILE="$RUNNER_TEMP/backup-passphrase"
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" > "$PASSPHRASE_FILE"
+          chmod 600 "$PASSPHRASE_FILE"
+          tar -czf "$ARCHIVE" -C "$RUNNER_TEMP" roles.sql schema.sql data.sql
+          gpg --batch --yes --pinentry-mode loopback --passphrase-file "$PASSPHRASE_FILE" --symmetric --cipher-algo AES256 --output "$ENCRYPTED" "$ARCHIVE"
+          rm -f "$ARCHIVE" "$PASSPHRASE_FILE"
+          echo "BACKUP_FILE=$ENCRYPTED" >> "$GITHUB_ENV"
+
+      - name: Upload encrypted backup and verify
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://a145f69a68f941e1ab076c21d61fb5f8.r2.cloudflarestorage.com
+          R2_BUCKET: mortafaat-store-media
+        shell: bash
+        run: |
+          set -euo pipefail
+          OBJECT_KEY="backups/$BACKUP_TIMESTAMP/database.tar.gz.gpg"
+          aws s3 cp "$BACKUP_FILE" "s3://$R2_BUCKET/$OBJECT_KEY" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          aws s3api head-object --bucket "$R2_BUCKET" --key "$OBJECT_KEY" --endpoint-url "$R2_ENDPOINT" >/dev/null
+          echo "Verified encrypted backup object: $OBJECT_KEY"
+
+      - name: Remove backups older than 30 days
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://a145f69a68f941e1ab076c21d61fb5f8.r2.cloudflarestorage.com
+          R2_BUCKET: mortafaat-store-media
+        shell: bash
+        run: |
+          set -euo pipefail
+          OLD_KEYS="$(aws s3api list-objects-v2 --bucket "$R2_BUCKET" --prefix backups/ --endpoint-url "$R2_ENDPOINT" --output json | python3 -c 'import datetime,json,sys; cutoff=datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=30); data=json.load(sys.stdin); [print(x["Key"]) for x in data.get("Contents",[]) if datetime.datetime.fromisoformat(x["LastModified"].replace("Z","+00:00")) < cutoff]')"
+          while IFS= read -r key; do
+            [[ -z "$key" ]] && continue
+            aws s3api delete-object --bucket "$R2_BUCKET" --key "$key" --endpoint-url "$R2_ENDPOINT" >/dev/null
+          done <<< "$OLD_KEYS"
