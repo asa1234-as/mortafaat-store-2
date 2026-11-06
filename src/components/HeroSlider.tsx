@@ -98,7 +98,7 @@ export const HeroSlider: React.FC = () => {
                   <img
                     src={slide.image}
                     alt={slideTitle}
-                    className="w-full h-full object-cover object-center transform scale-105 transition-transform duration-7000"
+                    className="w-full h-full object-cover object-center banner-image-drift"
                   />
                 )}
 
