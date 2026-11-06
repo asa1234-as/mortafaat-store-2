@@ -935,7 +935,7 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* Tabs Navigation */}
-      <div className="max-w-7xl mx-auto px-4 mt-6 flex flex-col lg:flex-row-reverse items-start gap-6">
+      <div className="max-w-7xl mx-auto px-4 mt-6 flex flex-col lg:flex-row items-start gap-6">
         <aside className="w-full lg:w-64 shrink-0 lg:sticky lg:top-6"><div className="flex flex-col gap-1 bg-white dark:bg-zinc-900 rounded-2xl p-2 shadow-sm border border-gray-200 dark:border-zinc-800">
           
           <button
