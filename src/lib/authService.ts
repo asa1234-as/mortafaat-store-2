@@ -14,12 +14,23 @@ import {
   isSupabaseConfigured, 
   signInWithEmail, 
   signUpWithEmail, 
-  requestPasswordReset, 
-  saveSession 
+  requestPasswordReset,
+  signOutSupabase
 } from './supabase';
 
 const USERS_STORAGE_KEY = 'mortafaat_registered_customers_v1';
 const OTP_STORAGE_KEY = 'mortafaat_otp_recovery_session';
+
+// Customer self-registration stays closed until email delivery and confirmation
+// have been configured and tested on the deployed store.
+export const isCustomerSignupEnabled =
+  (import.meta as any).env?.VITE_CUSTOMER_SIGNUP_ENABLED === 'true';
+
+function assertProductionAuthReady(): void {
+  if ((import.meta as any).env?.PROD && !isSupabaseConfigured) {
+    throw new Error('خدمة الحسابات غير متاحة حاليًا. يرجى المحاولة لاحقًا.');
+  }
+}
 
 export interface LocalCustomerAccount {
   id: string;
@@ -107,6 +118,11 @@ export async function registerCustomer(params: {
     throw new Error(validation.error);
   }
 
+  assertProductionAuthReady();
+  if (!isCustomerSignupEnabled) {
+    throw new Error('إنشاء حسابات العملاء متوقف مؤقتًا لحين تجهيز وتأكيد خدمة البريد الإلكتروني.');
+  }
+
   const cleanEmail = email.trim().toLowerCase();
   const cleanPhone = phone.trim().replace(/\D/g, '');
 
@@ -164,6 +180,7 @@ export async function registerCustomer(params: {
 
 // 5. Login
 export async function loginCustomer(emailOrPhone: string, password: string): Promise<User> {
+  assertProductionAuthReady();
   if (!emailOrPhone || !password) {
     throw new Error('يرجى إدخال البريد الإلكتروني أو رقم الهاتف وكلمة المرور.');
   }
@@ -179,7 +196,16 @@ export async function loginCustomer(emailOrPhone: string, password: string): Pro
   // If Supabase is active and query is an email, attempt GoTrue sign-in
   if (isSupabaseConfigured && query.includes('@')) {
     try {
-      return await signInWithEmail(query, password);
+      const user = await signInWithEmail(query, password);
+      if (!user.isVerified) {
+        await signOutSupabase();
+        throw new Error('يجب تأكيد بريدك الإلكتروني من رسالة التفعيل قبل تسجيل الدخول.');
+      }
+      if (user.role !== 'customer') {
+        await signOutSupabase();
+        throw new Error('هذا الحساب مخصص لإدارة المتجر ولا يمكن استخدامه من بوابة العملاء.');
+      }
+      return user;
     } catch (err: any) {
       throw new Error(err.message || 'بيانات الدخول غير صحيحة.');
     }
@@ -225,7 +251,8 @@ export function generateSecureOtp(): string {
 }
 
 // 7. Password Recovery Request
-export async function startPasswordRecovery(emailOrPhone: string): Promise<{ success: boolean; message: string; requiresOtp: boolean }> {
+export async function startPasswordRecovery(emailOrPhone: string, redirectTo?: string): Promise<{ success: boolean; message: string; requiresOtp: boolean }> {
+  assertProductionAuthReady();
   const query = emailOrPhone.trim().toLowerCase();
   const cleanPhone = emailOrPhone.trim().replace(/\D/g, '');
 
@@ -237,7 +264,7 @@ export async function startPasswordRecovery(emailOrPhone: string): Promise<{ suc
   // If Supabase configured and it's email:
   if (isSupabaseConfigured && query.includes('@')) {
     try {
-      await requestPasswordReset(query);
+      await requestPasswordReset(query, redirectTo);
       return {
         success: true,
         message: 'تم إرسال رابط استعادة كلمة المرور الرسمية إلى بريدك الإلكتروني.',
@@ -278,6 +305,7 @@ export async function startPasswordRecovery(emailOrPhone: string): Promise<{ suc
 
 // 8. Verify OTP and Set New Password
 export async function verifyOtpAndResetPassword(otpCode: string, newPassword: string): Promise<User> {
+  assertProductionAuthReady();
   if (isSupabaseConfigured) {
     throw new Error('استخدم رابط استعادة كلمة المرور المرسل من Supabase إلى بريدك الإلكتروني.');
   }
@@ -346,5 +374,5 @@ export function getSavedCustomerSession(): User | null {
 
 export function logoutCustomer() {
   localStorage.removeItem('mortafaat_current_customer');
-  saveSession(null);
+  void signOutSupabase();
 }
