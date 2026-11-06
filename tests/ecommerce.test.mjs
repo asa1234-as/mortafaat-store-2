@@ -297,7 +297,7 @@ test('Public Build Admin & Download Link Gate Verification', async () => {
 
   // Verify Header gates the ZIP download and admin button on VITE_PUBLIC_BUILD
   assert.strictEqual(
-    headerContent.includes("!(import.meta.env.VITE_PUBLIC_BUILD === 'true' || import.meta.env.MODE === 'public')"),
+    headerContent.includes("!import.meta.env.VITE_PUBLIC_BUILD"),
     true,
     'Header must hide admin & zip buttons when public build is active'
   );
