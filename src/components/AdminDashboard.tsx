@@ -44,6 +44,23 @@ import {
   X
 } from 'lucide-react';
 
+class SettingsPanelErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div role="alert" className="rounded-2xl border border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-6 text-center space-y-3">
+          <h3 className="font-black text-red-700 dark:text-red-300">تعذر تحميل الإعدادات والأمان</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300">حدث خطأ أثناء عرض بعض بيانات الإعدادات. باقي لوحة الإدارة ما زالت متاحة.</p>
+          <button type="button" onClick={() => window.location.reload()} className="px-4 py-2 rounded-xl bg-zinc-900 text-white font-bold">إعادة تحميل الصفحة</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export const AdminDashboard: React.FC = () => {
   const { 
     products, 
@@ -170,6 +187,7 @@ export const AdminDashboard: React.FC = () => {
   // Settings Temp State
   const [tempSettings, setTempSettings] = useState<StoreSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
+
 
   // Guard: Admin Authentication Enforcement
   if (!isAdminAuthenticated) {
@@ -2172,6 +2190,7 @@ export const AdminDashboard: React.FC = () => {
 
         {/* TAB 10: SETTINGS & SECURITY */}
         {activeTab === 'settings' && (
+          <SettingsPanelErrorBoundary>
           <div className="space-y-6">
             
             {/* Store Information & Shipping Settings */}
@@ -2667,22 +2686,15 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
-                <p className="font-bold text-black dark:text-white">
-                  {t("كيفية منح صلاحية مدير/مالك لحساب جديد بأمان:")}
-                </p>
-                <p className="leading-relaxed">
-                  {t("سجل حسابًا جديدًا من واجهة المتجر بالبريد الإلكتروني، ثم قم بتشغيل الأمر التالي في Supabase SQL Editor:")}
-                </p>
-                <pre className="p-3 rounded-xl bg-black text-brand-gold font-mono text-[11px] overflow-x-auto text-start" dir="ltr">
-{`UPDATE public.profiles
-SET role = 'owner'
-WHERE id = (SELECT id FROM auth.users WHERE email = 'YOUR_NEW_ADMIN@EMAIL.COM');`}
-                </pre>
+              <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/70 dark:bg-emerald-950/20 p-4 space-y-2 text-xs">
+                <p className="font-black text-emerald-800 dark:text-emerald-300">المالك الوحيد المعتمد للمتجر</p>
+                <p className="font-mono font-bold text-gray-900 dark:text-white" dir="ltr">ahmedorabi753@gmail.com</p>
+                <p className="text-gray-600 dark:text-gray-300">هذا البريد وحده يملك صلاحية OWNER. أي حساب آخر يظل عميلًا ولا يمكنه فتح لوحة الإدارة أو تعديل بيانات المتجر.</p>
               </div>
             </div>
 
           </div>
+          </SettingsPanelErrorBoundary>
         )}
 
       </div>

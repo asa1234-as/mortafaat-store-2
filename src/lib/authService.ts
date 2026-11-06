@@ -110,14 +110,15 @@ export async function registerCustomer(params: {
   const cleanEmail = email.trim().toLowerCase();
   const cleanPhone = phone.trim().replace(/\D/g, '');
 
-  // Check duplicate in local accounts
+  // Local duplicate checks apply only to the offline demo store.
   const existingUsers = getStoredCustomers();
-  const duplicate = existingUsers.find(
-    u => u.email.toLowerCase() === cleanEmail || u.phone === cleanPhone
-  );
-
-  if (duplicate) {
-    throw new Error('هذا البريد الإلكتروني أو رقم الهاتف مسجل بالفعل مسبقاً، يرجى تسجيل الدخول مباشرة.');
+  if (!isSupabaseConfigured) {
+    const duplicate = existingUsers.find(
+      u => u.email.toLowerCase() === cleanEmail || u.phone === cleanPhone
+    );
+    if (duplicate) {
+      throw new Error('هذا البريد الإلكتروني أو رقم الهاتف مسجل بالفعل مسبقاً، يرجى تسجيل الدخول مباشرة.');
+    }
   }
 
   // If Supabase is active, register via GoTrue Auth
@@ -169,6 +170,11 @@ export async function loginCustomer(emailOrPhone: string, password: string): Pro
 
   const query = emailOrPhone.trim().toLowerCase();
   const cleanPhone = emailOrPhone.trim().replace(/\D/g, '');
+
+  // Supabase Auth is the only production identity source. Do not fall back to local accounts.
+  if (isSupabaseConfigured && !query.includes('@')) {
+    throw new Error('يرجى تسجيل الدخول باستخدام البريد الإلكتروني المرتبط بحسابك.');
+  }
 
   // If Supabase is active and query is an email, attempt GoTrue sign-in
   if (isSupabaseConfigured && query.includes('@')) {
@@ -223,6 +229,11 @@ export async function startPasswordRecovery(emailOrPhone: string): Promise<{ suc
   const query = emailOrPhone.trim().toLowerCase();
   const cleanPhone = emailOrPhone.trim().replace(/\D/g, '');
 
+  // In production, password recovery must be handled by Supabase Auth.
+  if (isSupabaseConfigured && !query.includes('@')) {
+    throw new Error('يرجى إدخال البريد الإلكتروني المرتبط بحسابك لاستعادة كلمة المرور.');
+  }
+
   // If Supabase configured and it's email:
   if (isSupabaseConfigured && query.includes('@')) {
     try {
@@ -267,6 +278,9 @@ export async function startPasswordRecovery(emailOrPhone: string): Promise<{ suc
 
 // 8. Verify OTP and Set New Password
 export async function verifyOtpAndResetPassword(otpCode: string, newPassword: string): Promise<User> {
+  if (isSupabaseConfigured) {
+    throw new Error('استخدم رابط استعادة كلمة المرور المرسل من Supabase إلى بريدك الإلكتروني.');
+  }
   const rawSession = localStorage.getItem(OTP_STORAGE_KEY);
   if (!rawSession) {
     throw new Error('انتهت جلسة التحقق، يرجى طلب رمز جديد.');

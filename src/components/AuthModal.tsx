@@ -80,6 +80,10 @@ export const AuthModal: React.FC = () => {
         phone,
         password
       });
+      if (!user.isVerified) {
+        setAuthSuccess(t("تم إنشاء الحساب بنجاح. تحقق من بريدك الإلكتروني لتأكيد الحساب قبل تسجيل الدخول."));
+        return;
+      }
       setCurrentUser(user);
       setIsAuthModalOpen(false);
       resetForm();
