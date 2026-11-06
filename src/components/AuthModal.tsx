@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { X, Lock, User as UserIcon, Mail, Phone, KeyRound, ArrowRight, ShieldCheck } from 'lucide-react';
 import { t } from '../i18n';
@@ -6,13 +6,19 @@ import {
   loginCustomer, 
   registerCustomer, 
   startPasswordRecovery, 
-  verifyOtpAndResetPassword 
+  verifyOtpAndResetPassword,
+  isCustomerSignupEnabled
 } from '../lib/authService';
+import {
+  restorePasswordRecoverySessionFromUrl,
+  updatePasswordWithRecoverySession,
+  signOutSupabase
+} from '../lib/supabase';
 
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, setCurrentUser } = useStore();
 
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password' | 'verify-otp'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot-password' | 'verify-otp' | 'reset-password'>('login');
   
   // Form fields
   const [emailOrPhone, setEmailOrPhone] = useState('');
@@ -22,13 +28,12 @@ export const AuthModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   // State feedback
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isAuthModalOpen) return null;
 
   const resetForm = () => {
     setAuthError(null);
@@ -40,9 +45,33 @@ export const AuthModal: React.FC = () => {
     setPassword('');
     setOtpCode('');
     setNewPassword('');
+    setConfirmPassword('');
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const recoveryRequested = params.get('customerPasswordRecovery') === '1';
+    const hasRecoverySession = restorePasswordRecoverySessionFromUrl();
+
+    if (hasRecoverySession || recoveryRequested) {
+      setAuthMode('reset-password');
+      setIsAuthModalOpen(true);
+      if (!hasRecoverySession) {
+        setAuthError(t("رابط الاستعادة غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا."));
+      }
+      params.delete('customerPasswordRecovery');
+      const query = params.toString();
+      window.history.replaceState({}, document.title, window.location.pathname + (query ? `?${query}` : ''));
+    }
+  }, [setIsAuthModalOpen]);
+
+  if (!isAuthModalOpen) return null;
+
   const handleSwitchMode = (mode: 'login' | 'register' | 'forgot-password') => {
+    if (mode === 'register' && !isCustomerSignupEnabled) {
+      setAuthError(t("إنشاء حسابات العملاء متوقف مؤقتًا لحين تجهيز وتأكيد خدمة البريد الإلكتروني."));
+      return;
+    }
     resetForm();
     setAuthMode(mode);
   };
@@ -103,12 +132,11 @@ export const AuthModal: React.FC = () => {
     setAuthSuccess(null);
 
     try {
-      const result = await startPasswordRecovery(emailOrPhone);
+      const redirectTo = `${window.location.origin}/?customerPasswordRecovery=1`;
+      const result = await startPasswordRecovery(emailOrPhone, redirectTo);
       setAuthSuccess(result.message);
       if (result.requiresOtp) {
         setAuthMode('verify-otp');
-      } else {
-        setTimeout(() => handleSwitchMode('login'), 3000);
       }
     } catch (err: any) {
       setAuthError(err.message || t("تعذر العثور على الحساب."));
@@ -117,7 +145,38 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  // 4. Verify OTP & Reset Password
+  // Complete a customer recovery link after returning from the email.
+  const handleCustomerPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setAuthError(null);
+    setAuthSuccess(null);
+    if (newPassword.length < 8) {
+      setAuthError(t("كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف."));
+      setIsSubmitting(false);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setAuthError(t("تأكيد كلمة المرور غير مطابق."));
+      setIsSubmitting(false);
+      return;
+    }
+    try {
+      await updatePasswordWithRecoverySession(newPassword);
+      await signOutSupabase();
+      setAuthMode('login');
+      setPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setAuthSuccess(t("تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول."));
+    } catch (err: any) {
+      setAuthError(err.message || t("تعذر تحديث كلمة المرور. اطلب رابط استعادة جديدًا."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Local-development OTP fallback only.
   const handleOtpResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -150,7 +209,8 @@ export const AuthModal: React.FC = () => {
               <h3 className="font-black text-sm text-gray-900 dark:text-white">
                 {authMode === 'login' ? t("تسجيل الدخول إلى حسابك") : 
                  authMode === 'register' ? t("إنشاء حساب عميل جديد") :
-                 authMode === 'forgot-password' ? t("استعادة كلمة المرور") : t("تأكيد رمز التحقق")}
+                 authMode === 'forgot-password' ? t("استعادة كلمة المرور") :
+                 authMode === 'reset-password' ? t("تعيين كلمة مرور جديدة") : t("تأكيد رمز التحقق")}
               </h3>
               <span className="text-[10px] text-gray-500 dark:text-gray-400">
                 {t("مرتفعات ستور - تجربة تسوق آمنة ومضمونة")}
@@ -235,14 +295,20 @@ export const AuthModal: React.FC = () => {
             </button>
 
             <div className="pt-2 text-center border-t border-gray-100 dark:border-zinc-800">
-              <span className="text-gray-500 dark:text-gray-400">{t("عميل جديد؟")}{' '}</span>
-              <button
-                type="button"
-                onClick={() => handleSwitchMode('register')}
-                className="text-brand-goldDark dark:text-brand-gold font-bold hover:underline"
-              >
-                {t("إنشاء حساب جديد في ثوانٍ")}
-              </button>
+              {isCustomerSignupEnabled ? (
+                <>
+                  <span className="text-gray-500 dark:text-gray-400">{t("عميل جديد؟")}{' '}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleSwitchMode('register')}
+                    className="text-brand-goldDark dark:text-brand-gold font-bold hover:underline"
+                  >
+                    {t("إنشاء حساب جديد في ثوانٍ")}
+                  </button>
+                </>
+              ) : (
+                <span className="text-gray-500 dark:text-gray-400">{t("تسجيل حسابات العملاء الجديدة سيتاح قريبًا بعد اختبار البريد الإلكتروني.")}</span>
+              )}
             </div>
           </form>
         )}
@@ -335,7 +401,7 @@ export const AuthModal: React.FC = () => {
         {authMode === 'forgot-password' && (
           <form onSubmit={handleRecoverySubmit} className="space-y-3 text-xs">
             <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">
-              {t("أدخل بريدك الإلكتروني أو رقم هاتفك المسجل وسنرسل لك رمز تحقق مؤقت لاستعادة حسابك بأمان.")}
+              {t("أدخل بريدك الإلكتروني المسجل وسنرسل لك رابطًا آمنًا لتعيين كلمة مرور جديدة.")}
             </p>
             <div>
               <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("البريد أو الهاتف المسجل *")}</label>
@@ -354,7 +420,7 @@ export const AuthModal: React.FC = () => {
               disabled={isSubmitting}
               className="w-full py-2.5 rounded-xl bg-black text-brand-gold font-bold text-xs hover:bg-zinc-800 transition-colors shadow-md disabled:opacity-50"
             >
-              {isSubmitting ? t("جاري الإرسال...") : t("إرسال رمز التحقق")}
+              {isSubmitting ? t("جاري الإرسال...") : t("إرسال رابط الاستعادة")}
             </button>
 
             <button
@@ -367,7 +433,32 @@ export const AuthModal: React.FC = () => {
           </form>
         )}
 
-        {/* 4. VERIFY OTP & RESET PASSWORD */}
+        {/* Customer recovery link: set a new password after returning from email. */}
+        {authMode === 'reset-password' && (
+          <form onSubmit={handleCustomerPasswordReset} className="space-y-3 text-xs">
+            <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">
+              {t("أدخل كلمة المرور الجديدة وأكدها لإكمال استعادة حسابك.")}
+            </p>
+            <div>
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("كلمة المرور الجديدة (8 أحرف فأكثر) *")}</label>
+              <input type="password" required minLength={8} autoComplete="new-password" value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none font-mono" />
+            </div>
+            <div>
+              <label className="font-bold text-gray-700 dark:text-gray-300 block mb-1">{t("تأكيد كلمة المرور الجديدة *")}</label>
+              <input type="password" required minLength={8} autoComplete="new-password" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white focus:border-brand-gold focus:outline-none font-mono" />
+            </div>
+            <button type="submit" disabled={isSubmitting}
+              className="w-full py-2.5 rounded-xl bg-gold-gradient text-black font-black text-xs hover:brightness-105 transition-all shadow-md disabled:opacity-50">
+              {isSubmitting ? t("جاري تحديث كلمة المرور...") : t("حفظ كلمة المرور الجديدة")}
+            </button>
+          </form>
+        )}
+
+        {/* Local-development OTP fallback only */}
         {authMode === 'verify-otp' && (
           <form onSubmit={handleOtpResetSubmit} className="space-y-3 text-xs">
             <div>
