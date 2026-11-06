@@ -1,4 +1,3 @@
-
 {
   "name": "mortafaat-store",
   "private": true,
@@ -7,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build --mode public",
-    "build:admin": "vite build --mode admin",
+    "build:admin": "vite build --mode admin && node scripts/finalize-admin-build.mjs",
     "build:public": "vite build --mode public",
     "preview": "vite preview",
     "test": "node --test tests/ecommerce.test.mjs"
