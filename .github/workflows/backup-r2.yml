@@ -12,6 +12,9 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Check backup credentials
         id: credentials
         shell: bash
@@ -47,9 +50,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ ! -f supabase/config.toml ]]; then
+            npx --yes supabase@latest init
+          fi
           npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f "$RUNNER_TEMP/roles.sql" --role-only
           npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f "$RUNNER_TEMP/schema.sql"
-          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f "$RUNNER_TEMP/data.sql" --use-copy --data-only
+          npx --yes supabase@latest db dump --db-url "$SUPABASE_DB_URL" -f "$RUNNER_TEMP/data.sql" --use-copy --data-only -x "storage.buckets_vectors" -x "storage.vector_indexes"
           echo "BACKUP_TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_ENV"
 
       - name: Encrypt and archive backup
