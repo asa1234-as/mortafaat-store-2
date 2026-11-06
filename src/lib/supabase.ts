@@ -204,9 +204,12 @@ export async function signOutSupabase(): Promise<void> {
   saveSession(null);
 }
 
-export async function requestPasswordReset(email: string): Promise<void> {
+export async function requestPasswordReset(email: string, redirectTo?: string): Promise<void> {
   const url = baseUrl();
-  const response = await fetch(`${url}/auth/v1/recover`, {
+  const endpoint = redirectTo
+    ? `${url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`
+    : `${url}/auth/v1/recover`;
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -215,7 +218,56 @@ export async function requestPasswordReset(email: string): Promise<void> {
     body: JSON.stringify({ email })
   });
   if (!response.ok) {
-    throw new Error('تعذر إرسال رابط استعادة كلمة المرور، يرجى التأكد من البريد المدخل.');
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.msg || data.message || 'تعذر إرسال رابط استعادة كلمة المرور، يرجى التأكد من البريد المدخل.');
+  }
+}
+
+/**
+ * Handles Supabase's implicit-flow recovery callback. The recovery link redirects
+ * back with short-lived tokens in the URL fragment; persist them before showing
+ * the password form, then remove the tokens from the visible URL.
+ */
+export function restorePasswordRecoverySessionFromUrl(): boolean {
+  if (typeof window === 'undefined' || !window.location.hash) return false;
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  const type = params.get('type');
+  if (!accessToken || !refreshToken || type !== 'recovery') return false;
+
+  let userId = '';
+  try {
+    const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    userId = payload.sub || '';
+  } catch {
+    // The access token remains usable for the password update even if its subject cannot be decoded.
+  }
+
+  saveSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_at: Math.floor(Date.now() / 1000) + Number(params.get('expires_in') || 3600),
+    user: { id: userId, role: 'customer' }
+  });
+
+  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+  return true;
+}
+
+export async function updatePasswordWithRecoverySession(password: string): Promise<void> {
+  const session = getSupabaseSession();
+  if (!session?.access_token) {
+    throw new Error('انتهت صلاحية رابط الاستعادة. اطلب رابطًا جديدًا وحاول مرة أخرى.');
+  }
+  const response = await fetch(`${baseUrl()}/auth/v1/user`, {
+    method: 'PUT',
+    headers: getHeaders(session.access_token),
+    body: JSON.stringify({ password })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.msg || data.message || data.error_description || 'تعذر تحديث كلمة المرور.');
   }
 }
 
