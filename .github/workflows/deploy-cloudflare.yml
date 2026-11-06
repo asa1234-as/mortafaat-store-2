@@ -1,0 +1,61 @@
+name: Deploy customer and admin Workers
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Cloudflare deployment token
+        id: credentials
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ -n "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deployment skipped. Add CLOUDFLARE_API_TOKEN as described in docs/app-deployments.md."
+          fi
+
+      - name: Checkout repository
+        if: steps.credentials.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.credentials.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm ci
+
+      - name: Build customer storefront
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run build:public
+
+      - name: Deploy customer Worker
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --yes wrangler@latest deploy --config wrangler.jsonc
+
+      - name: Build admin portal
+        if: steps.credentials.outputs.configured == 'true'
+        run: npm run build:admin
+
+      - name: Deploy admin Worker
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --yes wrangler@latest deploy --config wrangler.admin.jsonc

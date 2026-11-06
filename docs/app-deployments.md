@@ -15,3 +15,26 @@
 - بعد نشرها، أضف رابطها إلى قائمة Redirect URLs في Supabase Auth حتى تعمل استعادة كلمة مرور المدير من النطاق المنفصل.
 
 لا يتم تغيير إعدادات Supabase Redirect URLs قبل التأكد من إنشاء Worker الإدارة وتشغيله.
+
+
+## إعداد النشر التلقائي
+
+ملف `.github/workflows/deploy-cloudflare.yml` ينشر نسختي العملاء والإدارة بعد كل تحديث على `main`، بشرط وجود سر GitHub التالي:
+
+`CLOUDFLARE_API_TOKEN`
+
+لإنشائه:
+1. من Cloudflare افتح **My Profile → API Tokens → Create Token**.
+2. أنشئ Token مخصصًا للنشر، وليس Global API Key.
+3. امنحه صلاحية تعديل Workers Scripts، وصلاحية قراءة/ربط R2 على الحساب الذي يحتوي Bucket `mortafaat-store-media`. اختر الحساب نفسه فقط، وقلّل الصلاحيات قدر الإمكان.
+4. انسخ قيمة Token مرة واحدة.
+5. في GitHub افتح **Settings → Secrets and variables → Actions → New repository secret**، وسمّه `CLOUDFLARE_API_TOKEN` وضع القيمة هناك فقط. لا ترسلها في المحادثة ولا تضعها في ملفات المشروع.
+
+إذا لم يكن السر موجودًا، يتخطى النشر بأمان ولا يوقف اختبارات المشروع. بعد إضافته، شغّل Workflow **Deploy customer and admin Workers** يدويًا من تبويب Actions.
+
+## روابط التطبيقات بعد النشر
+
+- العملاء: `https://mortafaat-store-2new.ahmedorabi753.workers.dev`
+- الإدارة: `https://mortafaat-store-admin.ahmedorabi753.workers.dev`
+
+بعد نجاح أول نشر للإدارة، يجب إضافة رابط الإدارة إلى **Supabase → Authentication → URL Configuration → Redirect URLs**، مع السماح بمساراته، قبل اختبار استعادة كلمة مرور المدير من النطاق الجديد.
