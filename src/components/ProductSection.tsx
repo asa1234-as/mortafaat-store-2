@@ -114,7 +114,9 @@ export const ProductSection: React.FC = () => {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
           {sortedProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <div key={product.id} className="store-product-enter">
+              <ProductCard product={product} />
+            </div>
           ))}
         </div>
       )}
