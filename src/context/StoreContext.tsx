@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { 
   signInAdmin as supabaseSignInAdmin, 
   signOutSupabase, 
-  getSupabaseSession, 
+  restoreSupabaseUser,
+  hasAdminRole,
   isSupabaseConfigured,
   fetchProductsDB,
   saveProductDB,
