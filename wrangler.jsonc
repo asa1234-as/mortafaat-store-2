@@ -1,9 +1,22 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mortafaat-store-2new",
+  "main": "src/worker.ts",
   "compatibility_date": "2026-11-01",
+  "vars": {
+    "SUPABASE_URL": "https://hjuddwmoznkhxnqtdajo.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_DB7NOu4SEu7vLdgeNdDVkw_FdyM-dQD"
+  },
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "mortafaat-store-media"
+    }
+  ],
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/media/*"],
     "not_found_handling": "single-page-application"
   },
   "previews": {}

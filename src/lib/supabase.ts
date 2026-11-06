@@ -758,31 +758,36 @@ export async function uploadProductImage(file: File): Promise<string> {
   return uploadMediaFile(file, 'product-images');
 }
 
-export async function uploadMediaFile(file: File, bucket = 'product-images'): Promise<string> {
+export async function uploadMediaFile(file: File, folder = 'product-images'): Promise<string> {
   if (!isSupabaseConfigured) {
     throw new Error('Supabase غير مهيأ لرفع الملفات');
   }
 
-  const url = baseUrl();
-  const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = `${Date.now()}-${cleanName}`;
+  const session = getSupabaseSession();
+  if (!session?.access_token) {
+    throw new Error('انتهت جلسة الإدارة. سجّل الدخول مرة أخرى ثم أعد رفع الملف.');
+  }
 
-  const res = await fetch(`${url}/storage/v1/object/${bucket}/${path}`, {
+  const allowedFolders = new Set(['product-images', 'product-videos', 'banner-images', 'banner-videos']);
+  if (!allowedFolders.has(folder)) {
+    throw new Error('نوع مجلد الرفع غير مسموح.');
+  }
+
+  const response = await fetch(`/api/media?folder=${encodeURIComponent(folder)}`, {
     method: 'POST',
     headers: {
-      'apikey': SUPABASE_ANON_KEY || '',
-      'Authorization': `Bearer ${getSupabaseSession()?.access_token}`,
-      'Content-Type': file.type
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': file.type || 'application/octet-stream'
     },
     body: file
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || 'فشل رفع الملف إلى Supabase Storage. تأكد من صلاحية المدير.');
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || typeof data.url !== 'string') {
+    throw new Error(data.error || 'فشل رفع الملف إلى مساحة التخزين.');
   }
 
-  return `${url}/storage/v1/object/public/${bucket}/${path}`;
+  return data.url;
 }
 
 // ==========================================
