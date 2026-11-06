@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:admin": "vite build",
+    "build": "vite build --mode public",
+    "build:admin": "vite build --mode admin",
     "build:public": "vite build --mode public",
     "preview": "vite preview",
     "test": "node --test tests/ecommerce.test.mjs"
