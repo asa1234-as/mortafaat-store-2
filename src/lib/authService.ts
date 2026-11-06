@@ -170,6 +170,11 @@ export async function loginCustomer(emailOrPhone: string, password: string): Pro
   const query = emailOrPhone.trim().toLowerCase();
   const cleanPhone = emailOrPhone.trim().replace(/\D/g, '');
 
+  // Supabase Auth is the only production identity source. Do not fall back to local accounts.
+  if (isSupabaseConfigured && !query.includes('@')) {
+    throw new Error('يرجى تسجيل الدخول باستخدام البريد الإلكتروني المرتبط بحسابك.');
+  }
+
   // If Supabase is active and query is an email, attempt GoTrue sign-in
   if (isSupabaseConfigured && query.includes('@')) {
     try {
