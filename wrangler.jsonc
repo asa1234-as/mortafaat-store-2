@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mortafaat-store-2new",
+  "account_id": "a145f69a68f941e1ab076c21d61fb5f8",
   "main": "src/worker.ts",
   "compatibility_date": "2026-11-01",
   "vars": {
