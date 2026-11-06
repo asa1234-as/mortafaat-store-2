@@ -107,3 +107,23 @@ jobs:
             [[ -z "$key" ]] && continue
             aws s3api delete-object --bucket "$R2_BUCKET" --key "$key" --endpoint-url "$R2_ENDPOINT" >/dev/null
           done <<< "$OLD_KEYS"
+
+
+      - name: Monitor R2 bucket usage against the free allowance
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://a145f69a68f941e1ab076c21d61fb5f8.r2.cloudflarestorage.com
+          R2_BUCKET: mortafaat-store-media
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOTAL_BYTES="$(aws s3api list-objects-v2 --bucket "$R2_BUCKET" --endpoint-url "$R2_ENDPOINT" --output json | python3 -c 'import json,sys; print(sum(int(x.get("Size",0)) for x in json.load(sys.stdin).get("Contents",[])))')"
+          python3 -c 'import sys; b=int(sys.argv[1]); print(f"R2 bucket usage: {b/1_000_000_000:.2f} GB (decimal)" )' "$TOTAL_BYTES"
+          if (( TOTAL_BYTES >= 9000000000 )); then
+            echo "::warning::R2 usage is at least 9 GB. Review large media and backups before reaching the 10 GB-month free storage allowance."
+          elif (( TOTAL_BYTES >= 8000000000 )); then
+            echo "::warning::R2 usage is at least 8 GB. The free storage allowance is approaching."
+          fi
