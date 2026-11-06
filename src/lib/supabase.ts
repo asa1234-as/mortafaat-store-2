@@ -157,19 +157,21 @@ export async function signInWithEmail(email: string, password: string): Promise<
 
   // Fetch user role from profiles table
   const role = await getUserRole(data.user.id, data.access_token);
+  const isVerified = Boolean(data.user.email_confirmed_at || data.user.confirmed_at);
   return {
     id: data.user.id,
     name: data.user.user_metadata?.full_name || email.split('@')[0],
     email: data.user.email || email,
     phone: data.user.phone || '',
     role,
-    isVerified: true
+    isVerified
   };
 }
 
 export async function signUpWithEmail(email: string, password: string, metadata: { full_name?: string; phone?: string } = {}): Promise<User> {
   const data = await authRequest('signup', { email, password, data: metadata });
-  if (data.access_token) {
+  const isVerified = Boolean(data.user?.email_confirmed_at || data.user?.confirmed_at);
+  if (data.access_token && isVerified) {
     const session: SupabaseSession = {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
@@ -177,6 +179,8 @@ export async function signUpWithEmail(email: string, password: string, metadata:
       user: data.user
     };
     saveSession(session);
+  } else {
+    saveSession(null);
   }
   return {
     id: data.user.id,
@@ -184,7 +188,7 @@ export async function signUpWithEmail(email: string, password: string, metadata:
     email: data.user.email || email,
     phone: metadata.phone || '',
     role: 'customer',
-    isVerified: Boolean(data.access_token)
+    isVerified
   };
 }
 
@@ -248,7 +252,7 @@ export function restorePasswordRecoverySessionFromUrl(): boolean {
     access_token: accessToken,
     refresh_token: refreshToken,
     expires_at: Math.floor(Date.now() / 1000) + Number(params.get('expires_in') || 3600),
-    user: { id: userId, role: 'customer' }
+    user: { id: userId }
   });
 
   window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
