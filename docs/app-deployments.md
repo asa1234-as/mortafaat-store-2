@@ -3,7 +3,7 @@
 المشروع أصبح يملك مدخلي بناء منفصلين:
 
 - تطبيق العملاء: `npm run build:public`، ينتج ملفات `dist/` ويستخدم `index.html` و`src/main.tsx` و`src/PublicApp.tsx` فقط.
-- بوابة الإدارة: `npm run build:admin`، تنتج ملفات `dist-admin/` وتستخدم `index.admin.html` و`src/admin-main.tsx` و`src/AdminApp.tsx`.
+- بوابة الإدارة: `npm run build:admin`، تنتج ملفات `dist-admin/` وتستخدم `index.admin.html` و`src/admin-main.tsx` و`src/AdminApp.tsx`. خطوة ما بعد البناء تنسخ `index.admin.html` إلى `dist-admin/index.html` لأن Cloudflare Workers Assets يحتاج ملف `index.html` في جذر الأصول لعرض الصفحة عند فتح رابط Worker مباشرة.
 
 تطبيق العملاء لا يستورد مكونات `AdminDashboard` أو `AdminLoginPortal` ولا يحتوي مسار دخول الإدارة. بوابة الإدارة مستقلة وتتحقق من دور `admin/owner` عبر Supabase قبل عرض لوحة التحكم، كما يبقى التحقق الحقيقي في سياسات RLS وWorker رفع الملفات.
 
