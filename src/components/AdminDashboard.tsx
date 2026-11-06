@@ -334,16 +334,24 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleSlideImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSlideImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setSlideImage(reader.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      if (isSupabaseConfigured) {
+        const publicUrl = await uploadMediaFile(file, 'banner-images');
+        setSlideImage(publicUrl);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') setSlideImage(reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err: any) {
+      alert(err.message || t("تعذر رفع صورة البانر"));
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -354,7 +362,7 @@ export const AdminDashboard: React.FC = () => {
     setIsUploadingProductVideo(true);
     try {
       if (isSupabaseConfigured) {
-        const publicUrl = await uploadMediaFile(file, 'product-images');
+        const publicUrl = await uploadMediaFile(file, 'product-videos');
         setProdVideoUrl(publicUrl);
       } else {
         const reader = new FileReader();
@@ -379,7 +387,7 @@ export const AdminDashboard: React.FC = () => {
     setIsUploadingSlideVideo(true);
     try {
       if (isSupabaseConfigured) {
-        const publicUrl = await uploadMediaFile(file, 'product-images');
+        const publicUrl = await uploadMediaFile(file, 'banner-videos');
         setSlideVideoUrl(publicUrl);
       } else {
         const reader = new FileReader();
@@ -869,12 +877,12 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* Tabs Navigation */}
-      <div className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="flex border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-2xl px-2 shadow-xs overflow-x-auto scrollbar-none">
+      <div className="max-w-7xl mx-auto px-4 mt-6 flex flex-col lg:flex-row-reverse items-start gap-6">
+        <aside className="w-full lg:w-64 shrink-0 lg:sticky lg:top-6"><div className="flex flex-col gap-1 bg-white dark:bg-zinc-900 rounded-2xl p-2 shadow-sm border border-gray-200 dark:border-zinc-800">
           
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'overview' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -884,7 +892,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('slides')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'slides' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -894,7 +902,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('categories')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'categories' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -904,7 +912,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('products')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'products' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -914,7 +922,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('orders')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'orders' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -929,7 +937,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('customers')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'customers' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -939,7 +947,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('coupons')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'coupons' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -949,7 +957,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('live-chat')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'live-chat' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -959,7 +967,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('bot-training')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'bot-training' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
@@ -969,18 +977,17 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-2 py-3 px-4 font-bold text-xs sm:text-sm border-s-2 transition-colors whitespace-nowrap ${
               activeTab === 'settings' ? 'border-brand-gold text-brand-black dark:text-brand-gold bg-amber-50/50 dark:bg-zinc-800' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-100'
             }`}
           >
             <SettingsIcon className="w-4 h-4 text-brand-goldDark" />
             <span>{t("الإعدادات والأمان")}</span>
           </button>
-        </div>
-      </div>
+        </div></aside>
 
       {/* Main Tab Content */}
-      <div className="max-w-7xl mx-auto px-4 mt-6">
+      <div className="flex-1 min-w-0 w-full mt-0">
         
         {/* TAB 1: EXECUTIVE OVERVIEW */}
         {activeTab === 'overview' && (
