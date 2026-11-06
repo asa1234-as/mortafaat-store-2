@@ -292,7 +292,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* Admin portal trigger (Local Preview Only) */}
-          {!(import.meta.env.VITE_PUBLIC_BUILD === 'true' || import.meta.env.MODE === 'public') && (
+          {!import.meta.env.VITE_PUBLIC_BUILD && (
             <button
               onClick={() => void loginAdmin()}
               className="flex items-center gap-1 bg-black/30 hover:bg-black/50 text-black px-2.5 py-0.5 rounded-full text-[11px] font-black transition-colors"
