@@ -61,9 +61,6 @@ export function getSupabaseSession(): SupabaseSession | null {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const session = JSON.parse(raw) as SupabaseSession;
-    if (session.expires_at && session.expires_at * 1000 < Date.now()) {
-      return null;
-    }
     return session;
   } catch {
     return null;
@@ -75,6 +72,57 @@ export function saveSession(session: SupabaseSession | null) {
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   } else {
     localStorage.removeItem(SESSION_KEY);
+  }
+}
+
+export async function refreshSupabaseSession(): Promise<SupabaseSession | null> {
+  const current = getSupabaseSession();
+  if (!current) return null;
+  if (current.expires_at && current.expires_at * 1000 > Date.now() + 60_000) return current;
+  if (!current.refresh_token) {
+    saveSession(null);
+    return null;
+  }
+  try {
+    const data = await authRequest('token?grant_type=refresh_token', { refresh_token: current.refresh_token });
+    const next: SupabaseSession = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || current.refresh_token,
+      expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 3600),
+      user: data.user || current.user
+    };
+    saveSession(next);
+    return next;
+  } catch {
+    saveSession(null);
+    return null;
+  }
+}
+
+export async function restoreSupabaseUser(): Promise<User | null> {
+  if (!isSupabaseConfigured) return null;
+  const session = await refreshSupabaseSession();
+  if (!session) return null;
+  try {
+    const response = await fetch(`${baseUrl()}/auth/v1/user`, {
+      headers: getHeaders(session.access_token)
+    });
+    if (!response.ok) {
+      saveSession(null);
+      return null;
+    }
+    const authUser = await response.json();
+    const role = await getUserRole(authUser.id, session.access_token);
+    return {
+      id: authUser.id,
+      name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || '',
+      email: authUser.email || '',
+      phone: authUser.phone || '',
+      role,
+      isVerified: Boolean(authUser.email_confirmed_at || authUser.confirmed_at)
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -198,7 +246,6 @@ export async function signInAdmin(email: string, password: string): Promise<User
     await signOutSupabase();
     throw new Error('غير مصرح: هذا الحساب ليس لديه صلاحيات مدير متجر أو مالك.');
   }
-  user.role = 'admin';
   return user;
 }
 
