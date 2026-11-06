@@ -198,18 +198,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // User Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const session = getSupabaseSession();
-    if (session) {
-      return {
-        id: session.user.id,
-        name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
-        email: session.user.email || '',
-        phone: session.user.phone || '',
-        role: session.user.role || 'customer',
-        isVerified: true
-      };
-    }
-    return getSavedCustomerSession();
+    return isSupabaseConfigured ? null : getSavedCustomerSession();
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -309,27 +298,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('mortafaat_chat_messages', JSON.stringify(chatMessages));
   }, [chatMessages]);
 
-  // Securely verify admin role from Supabase Auth session on mount (never trust raw localStorage)
+  // Restore and validate the Supabase session with Auth before granting any UI access.
   useEffect(() => {
+    let active = true;
     if (!isSupabaseConfigured) {
       setIsAdminAuthenticated(false);
+      setCurrentUser(null);
       return;
     }
-    const session = getSupabaseSession();
-    if (session?.user?.id) {
-      hasAdminRole(session.user.id).then(isAdmin => {
-        setIsAdminAuthenticated(isAdmin);
-        if (isAdmin) {
-          fetchOrdersDB().then(dbOrders => {
-            if (dbOrders.length > 0) setOrders(dbOrders);
-          }).catch(() => undefined);
-        }
-      }).catch(() => {
+    restoreSupabaseUser().then(async user => {
+      if (!active) return;
+      setCurrentUser(user);
+      if (!user) {
         setIsAdminAuthenticated(false);
-      });
-    } else {
-      setIsAdminAuthenticated(false);
-    }
+        return;
+      }
+      const isAdmin = await hasAdminRole(user.id);
+      if (!active) return;
+      setIsAdminAuthenticated(isAdmin);
+      if (isAdmin) {
+        const dbOrders = await fetchOrdersDB();
+        if (active && dbOrders.length > 0) setOrders(dbOrders);
+      }
+    }).catch(() => {
+      if (active) {
+        setCurrentUser(null);
+        setIsAdminAuthenticated(false);
+      }
+    });
+    return () => { active = false; };
   }, []);
 
   // Sync data with Supabase on mount
@@ -794,14 +791,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    // Local / Offline Preview mode: allow direct 1-click admin view for local preview
-    setIsAdminAuthenticated(true);
+    // Fail closed: never grant admin access when Supabase Auth is unavailable.
+    setIsAdminAuthenticated(false);
     setCurrentView('admin');
-    return true;
+    return false;
   };
 
   const logoutAdmin = () => {
     setIsAdminAuthenticated(false);
+    setCurrentUser(null);
     setCurrentView('store');
     signOutSupabase().catch(() => undefined);
   };
