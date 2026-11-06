@@ -41,6 +41,7 @@ import {
   ExternalLink,
   ShieldAlert,
   Printer,
+  Flame,
   X
 } from 'lucide-react';
 
