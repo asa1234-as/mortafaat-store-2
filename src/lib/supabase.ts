@@ -184,7 +184,7 @@ export async function signUpWithEmail(email: string, password: string, metadata:
     email: data.user.email || email,
     phone: metadata.phone || '',
     role: 'customer',
-    isVerified: true
+    isVerified: Boolean(data.access_token)
   };
 }
 
